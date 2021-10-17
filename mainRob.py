@@ -80,21 +80,22 @@ class MyRob(CRobLinkAngs):
         self.measures.irSensor[BACK_ID])
         
         print(sensors.center, sensors.left, sensors.right, sensors.back)
-        if sensors.left < 1.6 and sensors.center > 1.5:
-            print('Rotate left')
-            self.driveMotors(-0.05,+0.1)
-        elif sensors.right < 1.6 and sensors.center > 1.5:
-            print('Rotate right')
-            self.driveMotors(+0.1, -0.05)
-        elif sensors.right > 4.0:
-            print('Rotate left')
+        if sensors.center > 1.5:
+            if sensors.left < sensors.right:
+                print('Rotate left')
+                self.driveMotors(-0.05,+0.05)
+            else:
+                print('Rotate right')
+                self.driveMotors(+0.05, -0.05)
+        elif sensors.right > 3.5:
+            print('Slight Rotate left')
             self.driveMotors(-0.15,+0.1)
-        elif sensors.left > 4.0:
-            print('Rotate right')
+        elif sensors.left > 3.5:
+            print('Slight rotate right') 
             self.driveMotors(+0.1, -0.15)
         else:
             print('Go')
-            self.driveMotors(0.1,0.1)
+            self.driveMotors(0.15,0.15)
 
     def wander(self):
         sensors = self.SensorData(self.measures.irSensor[CENTER_ID],
