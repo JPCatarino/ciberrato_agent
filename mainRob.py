@@ -2,15 +2,27 @@
 import sys
 from croblink import *
 from math import *
+from typing import NamedTuple
 import xml.etree.ElementTree as ET
 
 CELLROWS=7
 CELLCOLS=14
 
+CENTER_ID = 0
+LEFT_ID = 1
+RIGHT_ID = 2
+BACK_ID = 3
+
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
         CRobLinkAngs.__init__(self, rob_name, rob_id, angles, host)
 
+    class SensorData(NamedTuple):
+        center: float
+        left: float
+        right: float
+        back: float
+    
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
     def setMap(self, labMap):
@@ -62,24 +74,22 @@ class MyRob(CRobLinkAngs):
                 self.move()
             
     def move(self):
-        center_id = 0
-        left_id = 1
-        right_id = 2
-        back_id = 3
-        print(self.measures.irSensor[center_id],
-            self.measures.irSensor[left_id],  
-            self.measures.irSensor[right_id],  
-            self.measures.irSensor[back_id])
-        if self.measures.irSensor[left_id] < 1.6 and self.measures.irSensor[center_id] > 1.5:
+        sensors = self.SensorData(self.measures.irSensor[CENTER_ID],
+        self.measures.irSensor[LEFT_ID],
+        self.measures.irSensor[RIGHT_ID],
+        self.measures.irSensor[BACK_ID])
+        
+        print(sensors.center, sensors.left, sensors.right, sensors.back)
+        if sensors.left < 1.6 and sensors.center > 1.5:
             print('Rotate left')
             self.driveMotors(-0.05,+0.1)
-        elif self.measures.irSensor[right_id] < 1.6 and self.measures.irSensor[center_id] > 1.5:
+        elif sensors.right < 1.6 and sensors.center > 1.5:
             print('Rotate right')
             self.driveMotors(+0.1, -0.05)
-        elif self.measures.irSensor[right_id] > 4.0:
+        elif sensors.right > 4.0:
             print('Rotate left')
             self.driveMotors(-0.15,+0.1)
-        elif self.measures.irSensor[left_id] > 4.0:
+        elif sensors.left > 4.0:
             print('Rotate right')
             self.driveMotors(+0.1, -0.15)
         else:
@@ -87,20 +97,21 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(0.1,0.1)
 
     def wander(self):
-        center_id = 0
-        left_id = 1
-        right_id = 2
-        back_id = 3
-        if    self.measures.irSensor[center_id] > 5.0\
-           or self.measures.irSensor[left_id]   > 5.0\
-           or self.measures.irSensor[right_id]  > 5.0\
-           or self.measures.irSensor[back_id]   > 5.0:
+        sensors = self.SensorData(self.measures.irSensor[CENTER_ID],
+        self.measures.irSensor[LEFT_ID],
+        self.measures.irSensor[RIGHT_ID],
+        self.measures.irSensor[BACK_ID])
+        
+        if    sensors.center > 5.0\
+           or sensors.left   > 5.0\
+           or sensors.right  > 5.0\
+           or sensors.back   > 5.0:
             print('Rotate left')
             self.driveMotors(-0.1,+0.1)
-        elif self.measures.irSensor[left_id]> 2.7:
+        elif sensors.left> 2.7:
             print('Rotate slowly right')
             self.driveMotors(0.1,0.0)
-        elif self.measures.irSensor[right_id]> 2.7:
+        elif sensors.right> 2.7:
             print('Rotate slowly left')
             self.driveMotors(0.0,0.1)
         else:
