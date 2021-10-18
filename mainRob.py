@@ -2,7 +2,7 @@
 import sys
 from croblink import *
 from math import *
-from typing import NamedTuple
+from robtools import *
 import xml.etree.ElementTree as ET
 
 CELLROWS=7
@@ -16,12 +16,9 @@ BACK_ID = 3
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
         CRobLinkAngs.__init__(self, rob_name, rob_id, angles, host)
-
-    class SensorData(NamedTuple):
-        center: float
-        left: float
-        right: float
-        back: float
+        self.laps = 0
+        self.visited_beacons = 0
+        self.on_beacon = False
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -42,6 +39,24 @@ class MyRob(CRobLinkAngs):
 
         while True:
             self.readSensors()
+
+            if self.measures.beaconReady:
+                pass
+            if self.measures.groundReady:
+                ground = SetGroundSensorData(self.measures.ground)
+
+            if ground.status == GroundStatus.beacon1 or ground.status == GroundStatus.beacon2:
+                if not self.on_beacon:
+                    self.visited_beacons += 1
+                    self.on_beacon = True
+                    print("Visiting Beacon!")
+            else:
+                self.on_beacon = False
+
+            if self.visited_beacons == 2 and ground.status== GroundStatus.home:
+                self.laps += 1
+                print("Completed 1 Lap!")
+                self.visited_beacons = 0
 
             if self.measures.endLed:
                 print(self.rob_name + " exiting")
@@ -74,7 +89,7 @@ class MyRob(CRobLinkAngs):
                 self.move()
             
     def move(self):
-        sensors = self.SensorData(self.measures.irSensor[CENTER_ID],
+        sensors = IRSensorData(self.measures.irSensor[CENTER_ID],
         self.measures.irSensor[LEFT_ID],
         self.measures.irSensor[RIGHT_ID],
         self.measures.irSensor[BACK_ID])
