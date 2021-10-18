@@ -98,10 +98,10 @@ class MyRob(CRobLinkAngs):
         if sensors.center > 1.5:
             if sensors.left < sensors.right:
                 print('Rotate left')
-                self.driveMotors(-0.05,+0.05)
+                self.driveMotors(-0.15,+0.15)
             else:
                 print('Rotate right')
-                self.driveMotors(+0.05, -0.05)
+                self.driveMotors(+0.15, -0.15)
         elif sensors.right > 3.5:
             print('Slight Rotate left')
             self.driveMotors(-0.15,+0.1)
