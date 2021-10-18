@@ -112,28 +112,6 @@ class MyRob(CRobLinkAngs):
             print('Go')
             self.driveMotors(0.15,0.15)
 
-    def wander(self):
-        sensors = self.SensorData(self.measures.irSensor[CENTER_ID],
-        self.measures.irSensor[LEFT_ID],
-        self.measures.irSensor[RIGHT_ID],
-        self.measures.irSensor[BACK_ID])
-        
-        if    sensors.center > 5.0\
-           or sensors.left   > 5.0\
-           or sensors.right  > 5.0\
-           or sensors.back   > 5.0:
-            print('Rotate left')
-            self.driveMotors(-0.1,+0.1)
-        elif sensors.left> 2.7:
-            print('Rotate slowly right')
-            self.driveMotors(0.1,0.0)
-        elif sensors.right> 2.7:
-            print('Rotate slowly left')
-            self.driveMotors(0.0,0.1)
-        else:
-            print('Go')
-            self.driveMotors(0.1,0.1)
-
 class Map():
     def __init__(self, filename):
         tree = ET.parse(filename)
