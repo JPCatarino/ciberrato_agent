@@ -55,7 +55,7 @@ class MyRob(CRobLinkAngs):
 
             if self.visited_beacons == 2 and ground.status== GroundStatus.home:
                 self.laps += 1
-                print("Completed 1 Lap!")
+                print(f"Completed {self.laps} Lap! {10-self.laps} to go")
                 self.visited_beacons = 0
 
             if self.measures.endLed:
