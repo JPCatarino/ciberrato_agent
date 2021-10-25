@@ -1,5 +1,6 @@
 
 import sys
+import argparse
 from croblink import *
 from math import *
 from robtools import *
@@ -40,23 +41,33 @@ class MyRob(CRobLinkAngs):
         while True:
             self.readSensors()
 
+            # Organize sensor data
+            if self.measures.irSensorReady:
+                ir_sensors = IRSensorData(self.measures.irSensor[CENTER_ID],
+                                       self.measures.irSensor[LEFT_ID],
+                                       self.measures.irSensor[RIGHT_ID],
+                                       self.measures.irSensor[BACK_ID])
             if self.measures.beaconReady:
                 pass
             if self.measures.groundReady:
                 ground = SetGroundSensorData(self.measures.ground)
+            if self.measures.gpsReady and self.measures.compassReady:
+                robot_location = RobotLocationData(self.measures.x, self.measures.y, self.measures.compass)
 
-            if ground.status == GroundStatus.beacon1 or ground.status == GroundStatus.beacon2:
-                if not self.on_beacon:
-                    self.visited_beacons += 1
-                    self.on_beacon = True
-                    print("Visiting Beacon!")
-            else:
-                self.on_beacon = False
+            # Track info on laps in challenge 1
+            if challenge == 1:
+                if ground.status == GroundStatus.beacon1 or ground.status == GroundStatus.beacon2:
+                    if not self.on_beacon:
+                        self.visited_beacons += 1
+                        self.on_beacon = True
+                        print("Visiting Beacon!")
+                else:
+                    self.on_beacon = False
 
-            if self.visited_beacons == 2 and ground.status== GroundStatus.home:
-                self.laps += 1
-                print(f"Completed {self.laps} Lap! {10-self.laps} to go")
-                self.visited_beacons = 0
+                if self.visited_beacons == 2 and ground.status== GroundStatus.home:
+                    self.laps += 1
+                    print(f"Completed {self.laps} Lap! {10-self.laps} to go")
+                    self.visited_beacons = 0
 
             if self.measures.endLed:
                 print(self.rob_name + " exiting")
@@ -86,26 +97,21 @@ class MyRob(CRobLinkAngs):
                     self.setVisitingLed(False)
                 if self.measures.returningLed==True:
                     self.setReturningLed(False)
-                self.move()
+                self.c1_move(ir_sensors)
             
-    def move(self):
-        sensors = IRSensorData(self.measures.irSensor[CENTER_ID],
-        self.measures.irSensor[LEFT_ID],
-        self.measures.irSensor[RIGHT_ID],
-        self.measures.irSensor[BACK_ID])
-        
-        print(sensors.center, sensors.left, sensors.right, sensors.back)
-        if sensors.center > 1.2:
-            if sensors.left < sensors.right:
+    def c1_move(self, ir_sensors):
+        #print(sensors.center, sensors.left, sensors.right, sensors.back)
+        if ir_sensors.center > 1.2:
+            if ir_sensors.left < ir_sensors.right:
                 print('Rotate left')
                 self.driveMotors(-0.15,+0.15)
             else:
                 print('Rotate right')
                 self.driveMotors(+0.15, -0.15)
-        elif sensors.right > 9:
+        elif ir_sensors.right > 9:
             print('Slight Rotate left')
             self.driveMotors(-0.15,+0.1)
-        elif sensors.left > 9:
+        elif ir_sensors.left > 9:
             print('Slight rotate right') 
             self.driveMotors(+0.1, -0.15)
         else:
@@ -144,6 +150,7 @@ rob_name = "pClient1"
 host = "localhost"
 pos = 1
 mapc = None
+challenge = 1
 
 for i in range(1, len(sys.argv),2):
     if (sys.argv[i] == "--host" or sys.argv[i] == "-h") and i != len(sys.argv) - 1:
@@ -154,6 +161,8 @@ for i in range(1, len(sys.argv),2):
         rob_name = sys.argv[i + 1]
     elif (sys.argv[i] == "--map" or sys.argv[i] == "-m") and i != len(sys.argv) - 1:
         mapc = Map(sys.argv[i + 1])
+    elif (sys.argv[i] == "--challenge" or sys.argv[i] == "-c") and i != len(sys.argv) - 1:
+        challenge = sys.argv[i+1]
     else:
         print("Unkown argument", sys.argv[i])
         quit()

@@ -7,6 +7,10 @@ class IRSensorData(NamedTuple):
         right: float
         back: float
 
+class RobotLocationData(NamedTuple):
+        x: float
+        y: float
+        angle: float
         
 class GroundStatus(Enum):
     normal = -1
