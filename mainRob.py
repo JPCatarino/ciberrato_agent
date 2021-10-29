@@ -1,6 +1,5 @@
 
 import sys
-import argparse
 from croblink import *
 from math import *
 from robtools import *
@@ -20,6 +19,7 @@ class MyRob(CRobLinkAngs):
         self.laps = 0
         self.visited_beacons = 0
         self.on_beacon = False
+        self.map = [[' '] * (CELLCOLS*2-1) for i in range(CELLROWS*2-1) ]
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -30,6 +30,27 @@ class MyRob(CRobLinkAngs):
         for l in reversed(self.labMap):
             print(''.join([str(l) for l in l]))
 
+    def readAndOrganizeSensors(self):
+        self.readSensors()
+        ir_sensors = None
+        ground = None
+        robot_location = None
+        # Organize sensor data
+        if self.measures.irSensorReady:
+            ir_sensors = IRSensorData(self.measures.irSensor[CENTER_ID],
+                                      self.measures.irSensor[LEFT_ID],
+                                      self.measures.irSensor[RIGHT_ID],
+                                      self.measures.irSensor[BACK_ID])
+        if self.measures.beaconReady:
+            pass
+        if self.measures.groundReady:
+            ground = SetGroundSensorData(self.measures.ground)
+        if self.measures.gpsReady and self.measures.compassReady:
+            robot_location = RobotLocationData(self.measures.x, self.measures.y)
+        
+        return ir_sensors, ground, robot_location
+
+
     def run(self):
         if self.status != 0:
             print("Connection refused or error")
@@ -39,21 +60,7 @@ class MyRob(CRobLinkAngs):
         stopped_state = 'run'
 
         while True:
-            self.readSensors()
-
-            # Organize sensor data
-            if self.measures.irSensorReady:
-                ir_sensors = IRSensorData(self.measures.irSensor[CENTER_ID],
-                                       self.measures.irSensor[LEFT_ID],
-                                       self.measures.irSensor[RIGHT_ID],
-                                       self.measures.irSensor[BACK_ID])
-            if self.measures.beaconReady:
-                pass
-            if self.measures.groundReady:
-                ground = SetGroundSensorData(self.measures.ground)
-            if self.measures.gpsReady and self.measures.compassReady:
-                robot_location = RobotLocationData(self.measures.x, self.measures.y, self.measures.compass)
-
+            ir_sensors, ground, robot_location = self.readAndOrganizeSensors()
             # Track info on laps in challenge 1
             if challenge == 1:
                 if ground.status == GroundStatus.beacon1 or ground.status == GroundStatus.beacon2:
@@ -69,8 +76,14 @@ class MyRob(CRobLinkAngs):
                     print(f"Completed {self.laps} Lap! {10-self.laps} to go")
                     self.visited_beacons = 0
 
+                if self.laps == 10 or self.measures.time == 4999:
+                    print(f"Final Lap Count: {self.laps}!")
+                    self.finish()
+            elif challenge == 2:
+                pass
+
             if self.measures.endLed:
-                print(self.rob_name + " exiting")
+                print(self.robName + " exiting")
                 quit()
 
             if state == 'stop' and self.measures.start:
@@ -97,7 +110,70 @@ class MyRob(CRobLinkAngs):
                     self.setVisitingLed(False)
                 if self.measures.returningLed==True:
                     self.setReturningLed(False)
-                self.c1_move(ir_sensors)
+                if challenge == 1:
+                    self.c1_move(ir_sensors)
+                else:
+                    self.c2_move(ir_sensors)
+
+    def rotate_until(self, angle):
+        print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
+
+        if self.measures.compass > angle:
+            while self.measures.compass > angle:
+                if abs(angle - self.measures.compass) > degrees(0.30):
+                    self.driveMotors(+0.15, -0.15)
+                    self.readSensors()
+
+                else:
+                    to_rt = abs(radians(angle - self.measures.compass))
+                    self.driveMotors(to_rt/2, -to_rt/2)
+                    self.readSensors()
+
+        elif self.measures.compass < angle:
+            while self.measures.compass < angle:
+                if abs(angle - self.measures.compass) > degrees(0.30):
+                    self.driveMotors(-0.15, +0.15)
+                    self.readSensors()
+                else:
+                    to_rt = abs(radians(angle - self.measures.compass))
+                    self.driveMotors(-to_rt/2, to_rt/2)
+                    self.readSensors()
+        else:
+            pass
+        print("Final:",angle, self.measures.compass, angle-self.measures.compass)
+
+    
+    def rotate(self, angle):
+        starting_angle = self.measures.compass
+
+        end_angle = starting_angle + angle
+
+        if end_angle < -180:
+            end_angle = 180 - (abs(end_angle)-180)
+        elif end_angle > 180:
+            end_angle = -180 + (abs(end_angle)-180)
+
+        self.rotate_until(end_angle)
+
+    def c2_move(self, ir_sensors):
+        #print(sensors.center, sensors.left, sensors.right, sensors.back)
+        if ir_sensors.center > 1.2:
+            if ir_sensors.left < ir_sensors.right:
+                print('Rotate left')
+                self.rotate(20)
+            else:
+                print('Rotate right')
+                self.rotate(-20)
+
+        elif ir_sensors.right > 9:
+            print('Slight Rotate left')
+            self.driveMotors(-0.15,+0.1)
+        elif ir_sensors.left > 9:
+            print('Slight rotate right') 
+            self.driveMotors(+0.1, -0.15)
+        else:
+            print('Go')
+            self.driveMotors(0.15,0.15)    
             
     def c1_move(self, ir_sensors):
         #print(sensors.center, sensors.left, sensors.right, sensors.back)
@@ -118,6 +194,8 @@ class MyRob(CRobLinkAngs):
             print('Go')
             self.driveMotors(0.15,0.15)
 
+    def mapMaze(self, ir_sensors, location_sensors):
+        pass
 class Map():
     def __init__(self, filename):
         tree = ET.parse(filename)
