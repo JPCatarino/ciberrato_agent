@@ -160,10 +160,10 @@ class MyRob(CRobLinkAngs):
         if ir_sensors.center > 1.2:
             if ir_sensors.left < ir_sensors.right:
                 print('Rotate left')
-                self.rotate(20)
+                self.rotate(17)
             else:
                 print('Rotate right')
-                self.rotate(-20)
+                self.rotate(-17)
 
         elif ir_sensors.right > 9:
             print('Slight Rotate left')
@@ -184,10 +184,10 @@ class MyRob(CRobLinkAngs):
             else:
                 print('Rotate right')
                 self.driveMotors(+0.15, -0.15)
-        elif ir_sensors.right > 9:
+        elif ir_sensors.right > 6:
             print('Slight Rotate left')
             self.driveMotors(-0.15,+0.1)
-        elif ir_sensors.left > 9:
+        elif ir_sensors.left > 6:
             print('Slight rotate right') 
             self.driveMotors(+0.1, -0.15)
         else:
@@ -240,7 +240,7 @@ for i in range(1, len(sys.argv),2):
     elif (sys.argv[i] == "--map" or sys.argv[i] == "-m") and i != len(sys.argv) - 1:
         mapc = Map(sys.argv[i + 1])
     elif (sys.argv[i] == "--challenge" or sys.argv[i] == "-c") and i != len(sys.argv) - 1:
-        challenge = sys.argv[i+1]
+        challenge = int(sys.argv[i+1])
     else:
         print("Unkown argument", sys.argv[i])
         quit()
