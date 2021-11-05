@@ -23,14 +23,17 @@ class MyRob(CRobLinkAngs):
         # Start variables related to maze
         self.map_width = CELLCOLS*4-1
         self.map_height = CELLROWS*4-1
-        self.starting_spot = (floor(self.map_height/2), floor(self.map_width/2))
+        self.map_starting_spot = Point(floor(self.map_height/2), floor(self.map_width/2))
+        
         if self.measures.gpsReady:
             print(self.measures.x, self.measures.y)
-            self.gps2cell_offset = (self.measures.x - self.starting_spot[1], self.measures.y + self.starting_spot[0])
+            self.gps_starting_spot = Point(self.measures.x, self.measures.y)    
+            self.gps2cell_offset = (self.measures.x - self.map_starting_spot.y, self.measures.y + self.map_starting_spot.x)
+
         if challenge == 2:    
             self.map = [[' '] * self.map_width for i in range(self.map_height) ]
             # Mark known cell
-            self.map[self.starting_spot[0]][self.starting_spot[1]] = 'X'
+            self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'X'
             self.mark_walls()
             self.print_map_to_file()
     
@@ -40,7 +43,7 @@ class MyRob(CRobLinkAngs):
         self.labMap = labMap
     
     def gps2cell(self, robot_location):
-        return (round(robot_location.x - self.gps2cell_offset[0]), round(self.gps2cell_offset[1] - robot_location.y))
+        return Point(round(robot_location.x - self.gps2cell_offset[0]), round(self.gps2cell_offset[1] - robot_location.y))
 
     def printMap(self):
         for l in reversed(self.labMap):
@@ -62,7 +65,7 @@ class MyRob(CRobLinkAngs):
         if self.measures.groundReady:
             ground = SetGroundSensorData(self.measures.ground)
         if self.measures.gpsReady and self.measures.compassReady:
-            robot_location = RobotLocationData(self.measures.x, self.measures.y)
+            robot_location = Point(self.measures.x, self.measures.y)
         
         return ir_sensors, ground, robot_location
 
@@ -173,6 +176,7 @@ class MyRob(CRobLinkAngs):
 
     def c2_move(self, ir_sensors, robot_location):
         #print(sensors.center, sensors.left, sensors.right, sensors.back)
+        
         if ir_sensors.center > 1.2:
             if ir_sensors.left < ir_sensors.right:
                 print('Rotate left')
@@ -194,8 +198,11 @@ class MyRob(CRobLinkAngs):
         self.mark_walls()
         _, _, robot_location = self.readAndOrganizeSensors()
         curr_cell = self.gps2cell(robot_location)
-        self.map[curr_cell[1]][curr_cell[0]] = 'X'
+        self.map[curr_cell.y][curr_cell.x] = 'X'
         self.print_map_to_file()
+    
+    def move_forward(self):
+        pass
             
     def c1_move(self, ir_sensors):
         #print(sensors.center, sensors.left, sensors.right, sensors.back)
@@ -223,27 +230,29 @@ class MyRob(CRobLinkAngs):
         ir_sensors, ground, robot_location = self.readAndOrganizeSensors()
         direction = degree_to_cardinal(self.measures.compass)
         curr_cell = self.gps2cell(robot_location)
+        print(ir_sensors)
+        threshold = 2.0
         
         if direction == 'N':
-            if ir_sensors.left >= 1.60:
-                self.map[curr_cell[1]-1][curr_cell[0]] = '-'
-            if ir_sensors.right >= 1.60:
-                self.map[curr_cell[1]+1][curr_cell[0]] = '-'
+            if ir_sensors.left >= threshold:
+                self.map[curr_cell.y-1][curr_cell.x] = '-'
+            if ir_sensors.right >= threshold:
+                self.map[curr_cell.y+1][curr_cell.x] = '-'
         elif direction == "W":
-            if ir_sensors.left >= 1.60:
-                self.map[curr_cell[1]][curr_cell[0]-1] = '|'
-            if ir_sensors.right >= 1.60:
-                self.map[curr_cell[1]][curr_cell[0]+1] = '|'
+            if ir_sensors.left >= threshold:
+                self.map[curr_cell.y][curr_cell.x-1] = '|'
+            if ir_sensors.right >= threshold:
+                self.map[curr_cell.y][curr_cell.x+1] = '|'
         elif direction == "E":
-            if ir_sensors.left >= 1.60:
-                self.map[curr_cell[1]][curr_cell[0]+1] = '|'
-            if ir_sensors.right >= 1.60:
-                self.map[curr_cell[1]][curr_cell[0]-1] = '|'
+            if ir_sensors.left >= threshold:
+                self.map[curr_cell.y][curr_cell.x+1] = '|'
+            if ir_sensors.right >= threshold:
+                self.map[curr_cell.y][curr_cell.x-1] = '|'
         else:
-            if ir_sensors.left >= 1.60:
-                self.map[curr_cell[1]+1][curr_cell[0]] = '-'
-            if ir_sensors.right >= 1.60:
-                self.map[curr_cell[1]-1][curr_cell[0]] = '-'
+            if ir_sensors.left >= threshold:
+                self.map[curr_cell.y+1][curr_cell.x] = '-'
+            if ir_sensors.right >= threshold:
+                self.map[curr_cell.y-1][curr_cell.x] = '-'
     
     def print_map_to_file(self):
         fout = open("map.txt", "w+")
@@ -303,7 +312,10 @@ for i in range(1, len(sys.argv),2):
         quit()
 
 if __name__ == '__main__':
-    rob=MyRob(rob_name,pos,[0.0,60.0,-60.0,180.0],host)
+    if challenge == 1:
+        rob=MyRob(rob_name,pos,[0.0,60.0,-60.0,180.0],host)
+    else:
+        rob=MyRob(rob_name,pos,[0.0,90.0,-90.0,180.0],host)
     if mapc != None:
         rob.setMap(mapc.labMap)
         rob.printMap()

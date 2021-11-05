@@ -9,7 +9,7 @@ class IRSensorData(NamedTuple):
         right: float
         back: float
 
-class RobotLocationData(NamedTuple):
+class Point(NamedTuple):
         x: float
         y: float
     
