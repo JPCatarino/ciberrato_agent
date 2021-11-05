@@ -16,15 +16,31 @@ BACK_ID = 3
 class MyRob(CRobLinkAngs):
     def __init__(self, rob_name, rob_id, angles, host):
         CRobLinkAngs.__init__(self, rob_name, rob_id, angles, host)
+        self.readSensors()
         self.laps = 0
         self.visited_beacons = 0
         self.on_beacon = False
-        self.map = [[' '] * (CELLCOLS*2-1) for i in range(CELLROWS*2-1) ]
+        # Start variables related to maze
+        self.map_width = CELLCOLS*4-1
+        self.map_height = CELLROWS*4-1
+        self.starting_spot = (floor(self.map_height/2), floor(self.map_width/2))
+        if self.measures.gpsReady:
+            print(self.measures.x, self.measures.y)
+            self.gps2cell_offset = (self.measures.x - self.starting_spot[1], self.measures.y + self.starting_spot[0])
+        if challenge == 2:    
+            self.map = [[' '] * self.map_width for i in range(self.map_height) ]
+            # Mark known cell
+            self.map[self.starting_spot[0]][self.starting_spot[1]] = 'X'
+            self.mark_walls()
+            self.print_map_to_file()
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
     def setMap(self, labMap):
         self.labMap = labMap
+    
+    def gps2cell(self, robot_location):
+        return (round(robot_location.x - self.gps2cell_offset[0]), round(self.gps2cell_offset[1] - robot_location.y))
 
     def printMap(self):
         for l in reversed(self.labMap):
@@ -113,7 +129,7 @@ class MyRob(CRobLinkAngs):
                 if challenge == 1:
                     self.c1_move(ir_sensors)
                 else:
-                    self.c2_move(ir_sensors)
+                    self.c2_move(ir_sensors, robot_location)
 
     def rotate_until(self, angle):
         print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
@@ -155,7 +171,7 @@ class MyRob(CRobLinkAngs):
 
         self.rotate_until(end_angle)
 
-    def c2_move(self, ir_sensors):
+    def c2_move(self, ir_sensors, robot_location):
         #print(sensors.center, sensors.left, sensors.right, sensors.back)
         if ir_sensors.center > 1.2:
             if ir_sensors.left < ir_sensors.right:
@@ -173,7 +189,13 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(+0.1, -0.15)
         else:
             print('Go')
-            self.driveMotors(0.15,0.15)    
+            self.driveMotors(0.15,0.15)  
+        
+        self.mark_walls()
+        _, _, robot_location = self.readAndOrganizeSensors()
+        curr_cell = self.gps2cell(robot_location)
+        self.map[curr_cell[1]][curr_cell[0]] = 'X'
+        self.print_map_to_file()
             
     def c1_move(self, ir_sensors):
         #print(sensors.center, sensors.left, sensors.right, sensors.back)
@@ -194,8 +216,43 @@ class MyRob(CRobLinkAngs):
             print('Go')
             self.driveMotors(0.15,0.15)
 
-    def mapMaze(self, ir_sensors, location_sensors):
+    def map_maze(self, ir_sensors, location_sensors):
         pass
+
+    def mark_walls(self):
+        ir_sensors, ground, robot_location = self.readAndOrganizeSensors()
+        direction = degree_to_cardinal(self.measures.compass)
+        curr_cell = self.gps2cell(robot_location)
+        
+        if direction == 'N':
+            if ir_sensors.left >= 1.60:
+                self.map[curr_cell[1]-1][curr_cell[0]] = '-'
+            if ir_sensors.right >= 1.60:
+                self.map[curr_cell[1]+1][curr_cell[0]] = '-'
+        elif direction == "W":
+            if ir_sensors.left >= 1.60:
+                self.map[curr_cell[1]][curr_cell[0]-1] = '|'
+            if ir_sensors.right >= 1.60:
+                self.map[curr_cell[1]][curr_cell[0]+1] = '|'
+        elif direction == "E":
+            if ir_sensors.left >= 1.60:
+                self.map[curr_cell[1]][curr_cell[0]+1] = '|'
+            if ir_sensors.right >= 1.60:
+                self.map[curr_cell[1]][curr_cell[0]-1] = '|'
+        else:
+            if ir_sensors.left >= 1.60:
+                self.map[curr_cell[1]+1][curr_cell[0]] = '-'
+            if ir_sensors.right >= 1.60:
+                self.map[curr_cell[1]-1][curr_cell[0]] = '-'
+    
+    def print_map_to_file(self):
+        fout = open("map.txt", "w+")
+        
+        for row in range(len(self.map)):
+            for col in range(len(self.map[row])):
+                fout.write(self.map[row][col])
+            fout.write("\n")
+
 class Map():
     def __init__(self, filename):
         tree = ET.parse(filename)

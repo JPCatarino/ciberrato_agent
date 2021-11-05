@@ -68,3 +68,9 @@ class PIDController():
             self.u_m1 = -self.max_u
         
         return self.u
+
+# Based on Gist by RobertSudwarts
+def degree_to_cardinal(d):
+    dirs = ["N", "W", "S", "E"]
+    ix = round(d/(360. / len(dirs)))
+    return dirs[ix % len(dirs)]
