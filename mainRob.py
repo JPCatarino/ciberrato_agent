@@ -210,8 +210,6 @@ class MyRob(CRobLinkAngs):
         if self.robot_state == RobotStates.MAPPING:
             self.driveMotors(0,0)  
             # Mark walls on map, X on curr floor 
-            #curr_cell = self.gps2mapcell(robot_location)
-            #self.map[curr_cell.y][curr_cell.x] = 'X'
             self.mark_walls()
             # Prints to file, maybe only run this in the end due to performance
             self.print_map_to_file()
@@ -222,28 +220,7 @@ class MyRob(CRobLinkAngs):
             # Find candidates to move to, get path to it, execute said movements
             self.c2_smart_move(ir_sensors, robot_location)
             self.robot_state = RobotStates.MAPPING
-            pass        
-
-    def c2_move(self, ir_sensors, robot_location):
-        #print(sensors.center, sensors.left, sensors.right, sensors.back)
-        
-        if ir_sensors.center > 1.2:
-            if ir_sensors.left < ir_sensors.right:
-                print('Rotate left')
-                self.rotate(17)
-            else:
-                print('Rotate right')
-                self.rotate(-17)
-
-        elif ir_sensors.right > 9:
-            print('Slight Rotate left')
-            self.driveMotors(-0.15,+0.1)
-        elif ir_sensors.left > 9:
-            print('Slight rotate right') 
-            self.driveMotors(+0.1, -0.15)
-        else:
-            print('Go')
-            self.driveMotors(0.15,0.15)  
+            pass         
     
     def c2_smart_move(self, ir_sensors, robot_location):
         curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
