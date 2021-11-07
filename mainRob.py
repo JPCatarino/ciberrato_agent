@@ -210,8 +210,8 @@ class MyRob(CRobLinkAngs):
         if self.robot_state == RobotStates.MAPPING:
             self.driveMotors(0,0)  
             # Mark walls on map, X on curr floor 
-            curr_cell = self.gps2mapcell(robot_location)
-            self.map[curr_cell.y][curr_cell.x] = 'X'
+            #curr_cell = self.gps2mapcell(robot_location)
+            #self.map[curr_cell.y][curr_cell.x] = 'X'
             self.mark_walls()
             # Prints to file, maybe only run this in the end due to performance
             self.print_map_to_file()
@@ -302,7 +302,7 @@ class MyRob(CRobLinkAngs):
             elif curr_orientation == Orientation.E:
                 dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
                 self.rotate_until(Orientation.W.value)
-
+        dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
         self.move_forward(robot_location, dest_cell)        
 
     
@@ -314,6 +314,8 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(0.1-deviation, 0.1+deviation)
             _, _, robot_location = self.readAndOrganizeSensors()
             curr_cell = self.gps2robotcell(robot_location)
+            curr_map_cell = self.gps2mapcell(robot_location)
+            self.map[curr_map_cell.y][curr_map_cell.x] = 'X'
 
             if curr_orientation == Orientation.N:
                 if curr_cell.x >= dest_cell.x:

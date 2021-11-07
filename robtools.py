@@ -78,3 +78,6 @@ def degree_to_cardinal(d):
     dirs = ["N", "W", "S", "E"]
     ix = round(d/(360. / len(dirs)))
     return dirs[ix % len(dirs)]
+
+def round_up_to_even(f):
+    return int(f) if ((int(f) % 2) == 0) else int(f) + 1
