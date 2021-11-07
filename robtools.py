@@ -14,10 +14,14 @@ class Point(NamedTuple):
         y: float
     
 class Orientation(Enum):
-    south = -90
-    east = 0
-    north = 90
-    west = 180
+    E = -90
+    N = 0
+    W = 90
+    S = 180
+
+class RobotStates(Enum):
+    MOVING = 0
+    MAPPING = 1
         
 class GroundStatus(Enum):
     normal = -1
