@@ -139,7 +139,7 @@ class MyRob(CRobLinkAngs):
                 else:
                     self.c2_brain(ir_sensors, robot_location)
 
-    def rotate_until(self, angle):
+    def b_rotate_until(self, angle):
         print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
 
         if self.measures.compass > angle:
@@ -164,6 +164,36 @@ class MyRob(CRobLinkAngs):
                     self.readSensors()
         else:
             pass
+        self.driveMotors(0, 0)
+        print("Final:",angle, self.measures.compass, angle-self.measures.compass)
+    
+    def rotate_until(self, angle):
+        print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
+
+        if self.measures.compass >= 0:
+            orientation_deviation = radians(angle - self.measures.compass)
+        elif angle == Orientation.S.value:
+            orientation_deviation =  radians(abs(self.measures.compass) - angle)
+        else: 
+            orientation_deviation = radians(angle - self.measures.compass)
+
+        while True:
+            deviation = orientation_deviation * 1
+            if deviation == 0:
+                break
+
+            self.driveMotors(0.1-deviation, 0.1+deviation)
+            self.readSensors()
+
+            if self.measures.compass >= 0:
+                orientation_deviation = radians(angle - self.measures.compass)
+            elif angle == Orientation.S.value:
+                orientation_deviation =  radians(abs(self.measures.compass) - angle)
+            else: 
+                orientation_deviation = radians(angle - self.measures.compass)
+
+        self.driveMotors(0, 0)
+
         print("Final:",angle, self.measures.compass, angle-self.measures.compass)
 
     
@@ -186,15 +216,17 @@ class MyRob(CRobLinkAngs):
         print("curr", curr_cell)
         print("next", next_position)
         print("compass", self.measures.compass)
-        print("expected orientation", expected_orientation)
+        print("expected orientation", expected_orientation, expected_orientation.value)
         
 
-        orientation_deviation = expected_orientation.value - self.measures.compass
+        if self.measures.compass >= 0:
+            orientation_deviation = radians(expected_orientation.value - self.measures.compass)
+        elif expected_orientation == Orientation.S:
+            orientation_deviation =  radians(abs(self.measures.compass) - expected_orientation.value)
+        else: 
+            orientation_deviation = radians(expected_orientation.value - self.measures.compass)
 
-        if(self.measures.compass < 0 and expected_orientation == Orientation.S):
-            orientation_deviation =  - (expected_orientation.value - abs(self.measures.compass))
-
-        print(orientation_deviation)
+        print("or_dev", orientation_deviation)
         if expected_orientation == Orientation.N:
             linear_deviation = next_position.y - curr_cell.y
         elif expected_orientation == Orientation.W:
@@ -203,8 +235,9 @@ class MyRob(CRobLinkAngs):
             linear_deviation = curr_cell.y - next_position.y
         elif expected_orientation == Orientation.E:
             linear_deviation = next_position.x - curr_cell.x 
+        print(linear_deviation)
 
-        return orientation_deviation * 0.01 + linear_deviation * 0.5
+        return orientation_deviation * 1 + linear_deviation * 0.5
 
     def c2_brain(self, ir_sensors, robot_location):
         if self.robot_state == RobotStates.MAPPING:
@@ -234,7 +267,7 @@ class MyRob(CRobLinkAngs):
                 self.rotate_until(Orientation.W.value)
             elif curr_orientation == Orientation.W:
                 dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
-                self.rotate_until(Orientation.S.value-2)
+                self.rotate_until(Orientation.S.value)
             elif curr_orientation == Orientation.S:
                 dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
                 self.rotate_until(Orientation.E.value)
@@ -254,7 +287,7 @@ class MyRob(CRobLinkAngs):
                 self.rotate_until(Orientation.W.value)
             elif curr_orientation == Orientation.E:
                 dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
-                self.rotate_until(Orientation.S.value-2)
+                self.rotate_until(Orientation.S.value)
         elif ir_sensors.center < threshold:
             print("Move Forwards")
             if curr_orientation == Orientation.N:
@@ -287,7 +320,7 @@ class MyRob(CRobLinkAngs):
         while True:
             deviation = self.calculate_deviation(robot_location, dest_cell)
             curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
-
+            
             self.driveMotors(0.1-deviation, 0.1+deviation)
             _, _, robot_location = self.readAndOrganizeSensors()
             curr_cell = self.gps2robotcell(robot_location)
