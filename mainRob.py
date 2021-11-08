@@ -237,7 +237,7 @@ class MyRob(CRobLinkAngs):
             linear_deviation = next_position.x - curr_cell.x 
         print(linear_deviation)
 
-        return orientation_deviation * 1 + linear_deviation * 0.5
+        return orientation_deviation + linear_deviation 
 
     def c2_brain(self, ir_sensors, robot_location):
         if self.robot_state == RobotStates.MAPPING:
@@ -313,6 +313,7 @@ class MyRob(CRobLinkAngs):
                 dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
                 self.rotate_until(Orientation.W.value)
         dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+        _, _, robot_location = self.readAndOrganizeSensors()
         self.move_forward(robot_location, dest_cell)        
 
     
@@ -360,9 +361,6 @@ class MyRob(CRobLinkAngs):
         else:
             print('Go')
             self.driveMotors(0.15,0.15)
-
-    def map_maze(self, ir_sensors, location_sensors):
-        pass
 
     def mark_walls(self):
         ir_sensors, ground, robot_location = self.readAndOrganizeSensors()
