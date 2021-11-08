@@ -312,8 +312,12 @@ class MyRob(CRobLinkAngs):
             elif curr_orientation == Orientation.E:
                 dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
                 self.rotate_until(Orientation.W.value)
-        dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+        
         _, _, robot_location = self.readAndOrganizeSensors()
+        curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
+        # TODO: LOOK INTO ROUNDING PROBLEMS
+        dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+
         self.move_forward(robot_location, dest_cell)        
 
     
