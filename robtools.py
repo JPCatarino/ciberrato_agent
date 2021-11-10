@@ -84,6 +84,3 @@ def round_up_to_even(f):
         return int(f) if ((abs(int(f)) % 2) == 0) else abs(int(f)) + 1
     if f < 0:
         return int(f) if ((abs(int(f)) % 2) == 0) else int(f) - 1
-
-
-print(round_up_to_even(-2))
