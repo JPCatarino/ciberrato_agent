@@ -138,34 +138,6 @@ class MyRob(CRobLinkAngs):
                     self.c1_move(ir_sensors)
                 else:
                     self.c2_brain(ir_sensors, robot_location)
-
-    def b_rotate_until(self, angle):
-        print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
-
-        if self.measures.compass > angle:
-            while self.measures.compass > angle:
-                if abs(angle - self.measures.compass) > degrees(0.30):
-                    self.driveMotors(+0.15, -0.15)
-                    self.readSensors()
-
-                else:
-                    to_rt = abs(radians(angle - self.measures.compass))
-                    self.driveMotors(to_rt/2, -to_rt/2)
-                    self.readSensors()
-
-        elif self.measures.compass < angle:
-            while self.measures.compass < angle:
-                if abs(angle - self.measures.compass) > degrees(0.30):
-                    self.driveMotors(-0.15, +0.15)
-                    self.readSensors()
-                else:
-                    to_rt = abs(radians(angle - self.measures.compass))
-                    self.driveMotors(-to_rt/2, to_rt/2)
-                    self.readSensors()
-        else:
-            pass
-        self.driveMotors(0, 0)
-        print("Final:",angle, self.measures.compass, angle-self.measures.compass)
     
     def rotate_until(self, angle):
         print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
