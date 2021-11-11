@@ -33,14 +33,21 @@ class MyRob(CRobLinkAngs):
             self.on_beacon = False
         elif challenge == 2:    
             self.map = [[' '] * self.map_width for i in range(self.map_height) ]
+            self.visited_nodes = []
+            self.nodes_to_visit = []
             # Mark known cell
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'X'
+            self.visited_nodes.append(self.mapcell2robotcell(self.map_starting_spot))
             self.robot_state = RobotStates.MAPPING
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
     def setMap(self, labMap):
         self.labMap = labMap
+    
+    def add_to_visited_cells(self, cell):
+        if cell not in self.visited_nodes:
+            self.visited_nodes.append(cell)
     
     # Takes GPS coordinates and returns x,y indexes for map
     def gps2mapcell(self, robot_location):
@@ -49,6 +56,14 @@ class MyRob(CRobLinkAngs):
     # Takes GPS coordinates and returns the current cell
     def gps2robotcell(self, robot_location):
         return Point(robot_location.x - self.gps_starting_spot.x, robot_location.y - self.gps_starting_spot.y)
+
+    # Takes map cell and converts it to robot cell    
+    def mapcell2robotcell(self, cell):
+        return Point(self.map_starting_spot.y - cell.y, cell.x - self.map_starting_spot.x)
+
+    # Takes robot cell and conerts it to map cell
+    def robotcell2mapcell(self, cell):
+        return Point(cell.y + self.map_starting_spot.x,  self.map_starting_spot.y + cell.x)
 
     def printMap(self):
         for l in reversed(self.labMap):
@@ -303,6 +318,7 @@ class MyRob(CRobLinkAngs):
             curr_cell = self.gps2robotcell(robot_location)
             curr_map_cell = self.gps2mapcell(robot_location)
             self.map[curr_map_cell.y][curr_map_cell.x] = 'X'
+            self.add_to_visited_cells(Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y)))
 
             if curr_orientation == Orientation.N:
                 if curr_cell.x >= dest_cell.x:
