@@ -37,7 +37,7 @@ class MyRob(CRobLinkAngs):
             self.nodes_to_visit = []
             # Mark known cell
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'X'
-            self.visited_nodes.append(self.mapcell2robotcell(self.map_starting_spot))
+            self.visited_nodes.append(Point(0, 0))
             self.robot_state = RobotStates.MAPPING
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
@@ -49,6 +49,14 @@ class MyRob(CRobLinkAngs):
         if cell not in self.visited_nodes:
             self.visited_nodes.append(cell)
     
+    def add_to_cells_to_visit(self, cell):
+        if cell not in self.visited_nodes and cell not in self.nodes_to_visit:
+            self.nodes_to_visit.append(cell)
+    
+    def clean_cells_to_visit(self):
+        aux = [i for i in self.nodes_to_visit if i not in self.visited_nodes]
+        self.nodes_to_visit = aux
+    
     # Takes GPS coordinates and returns x,y indexes for map
     def gps2mapcell(self, robot_location):
         return Point(round(robot_location.x - self.gps2cell_offset[0]), round(self.gps2cell_offset[1] - robot_location.y))
@@ -59,7 +67,7 @@ class MyRob(CRobLinkAngs):
 
     # Takes map cell and converts it to robot cell    
     def mapcell2robotcell(self, cell):
-        return Point(self.map_starting_spot.y - cell.y, cell.x - self.map_starting_spot.x)
+        return Point(cell.x - self.map_starting_spot.y , self.map_starting_spot.x - cell.y)
 
     # Takes robot cell and conerts it to map cell
     def robotcell2mapcell(self, cell):
@@ -240,6 +248,9 @@ class MyRob(CRobLinkAngs):
             # Find candidates to move to, get path to it, execute said movements
             self.c2_smart_move(ir_sensors, robot_location)
             self.robot_state = RobotStates.MAPPING
+            self.clean_cells_to_visit()
+            print("VISITED", self.visited_nodes)
+            print("TO VISIT", self.nodes_to_visit)
             pass         
     
     def c2_smart_move(self, ir_sensors, robot_location):
@@ -318,7 +329,7 @@ class MyRob(CRobLinkAngs):
             curr_cell = self.gps2robotcell(robot_location)
             curr_map_cell = self.gps2mapcell(robot_location)
             self.map[curr_map_cell.y][curr_map_cell.x] = 'X'
-            self.add_to_visited_cells(Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y)))
+            self.add_to_visited_cells(Point(round(curr_cell.x), round(curr_cell.y)))
 
             if curr_orientation == Orientation.N:
                 if curr_cell.x >= dest_cell.x:
@@ -364,39 +375,119 @@ class MyRob(CRobLinkAngs):
         if direction == 'N':
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y-1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y-1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.right >= threshold:
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y+1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y][curr_cell.x+1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x+1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.back >= threshold:
                 self.map[curr_cell.y][curr_cell.x-1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x-1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
         elif direction == "W":
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y][curr_cell.x-1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x-1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.right >= threshold:
                 self.map[curr_cell.y][curr_cell.x+1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x+1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y-1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y-1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.back >= threshold:
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y+1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
         elif direction == "E":
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y][curr_cell.x+1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x+1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.right >= threshold:
                 self.map[curr_cell.y][curr_cell.x-1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x-1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y+1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.back >= threshold:
                 self.map[curr_cell.y-1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y-1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
         else:
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y+1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.right >= threshold:
                 self.map[curr_cell.y-1][curr_cell.x] = '-'
+            else:
+                new_cell_to_visit = Point(curr_cell.x, curr_cell.y-1)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y][curr_cell.x-1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x-1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
             if ir_sensors.back >= threshold:
-                self.map[curr_cell.y][curr_cell.x+1] = '|'             
+                self.map[curr_cell.y][curr_cell.x+1] = '|'
+            else:
+                new_cell_to_visit = Point(curr_cell.x+1, curr_cell.y)
+                print("new", new_cell_to_visit, "\n\n\n\n\n\n")
+                print("after funct", self.mapcell2robotcell(new_cell_to_visit), "\n\n\n\n")
+                self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))             
     
     def print_map_to_file(self):
         fout = open("map.txt", "w+")
