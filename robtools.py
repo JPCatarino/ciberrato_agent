@@ -1,4 +1,5 @@
 import sys
+import itertools
 
 from typing import NamedTuple
 from enum import Enum
@@ -84,3 +85,28 @@ def round_up_to_even(f):
         return int(f) if ((abs(int(f)) % 2) == 0) else abs(int(f)) + 1
     if f < 0:
         return int(f) if ((abs(int(f)) % 2) == 0) else int(f) - 1
+
+# From itertools documentation 
+def pairwise(iterable):
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+def path_to_moves(path):
+    if len(path) <= 2:
+        return None 
+
+    node_pairs = pairwise(path)
+    move_list = []
+
+    for node in node_pairs:
+        if node[1][1] > node[0][1]:
+            move_list.append((Point(node[1][1], node[1][0]), Orientation.N))
+        elif node[1][1] < node[0][1]:
+            move_list.append((Point(node[1][1], node[1][0]), Orientation.S))
+        elif node[1][0] > node[0][0]:
+            move_list.append((Point(node[1][1], node[1][0]), Orientation.E))
+        elif node[1][0] < node[0][0]:
+            move_list.append((Point(node[1][1], node[1][0]), Orientation.W))
+    
+    return move_list
