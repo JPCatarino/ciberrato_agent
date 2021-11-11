@@ -368,6 +368,8 @@ class MyRob(CRobLinkAngs):
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y][curr_cell.x+1] = '|'
+            if ir_sensors.back >= threshold:
+                self.map[curr_cell.y][curr_cell.x-1] = '|'
         elif direction == "W":
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y][curr_cell.x-1] = '|'
@@ -375,6 +377,8 @@ class MyRob(CRobLinkAngs):
                 self.map[curr_cell.y][curr_cell.x+1] = '|'
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y-1][curr_cell.x] = '-'
+            if ir_sensors.back >= threshold:
+                self.map[curr_cell.y+1][curr_cell.x] = '-'
         elif direction == "E":
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y][curr_cell.x+1] = '|'
@@ -382,13 +386,17 @@ class MyRob(CRobLinkAngs):
                 self.map[curr_cell.y][curr_cell.x-1] = '|'
             if ir_sensors.center >= threshold:
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
+            if ir_sensors.back >= threshold:
+                self.map[curr_cell.y-1][curr_cell.x] = '-'
         else:
             if ir_sensors.left >= threshold:
                 self.map[curr_cell.y+1][curr_cell.x] = '-'
             if ir_sensors.right >= threshold:
                 self.map[curr_cell.y-1][curr_cell.x] = '-'
             if ir_sensors.center >= threshold:
-                self.map[curr_cell.y][curr_cell.x-1] = '|'                
+                self.map[curr_cell.y][curr_cell.x-1] = '|'
+            if ir_sensors.back >= threshold:
+                self.map[curr_cell.y][curr_cell.x+1] = '|'             
     
     def print_map_to_file(self):
         fout = open("map.txt", "w+")
