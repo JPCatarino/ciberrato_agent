@@ -23,6 +23,7 @@ class Orientation(Enum):
 class RobotStates(Enum):
     MOVING = 0
     MAPPING = 1
+    FINISHED = 2
         
 class GroundStatus(Enum):
     normal = -1

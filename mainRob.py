@@ -236,16 +236,24 @@ class MyRob(CRobLinkAngs):
             self.print_map_to_file()
             
             ## IF MAP IS FINISHED STOP, ELSE MOVE
-            self.robot_state =  RobotStates.MOVING
+            if not self.nodes_to_visit:
+                self.robot_state = RobotStates.FINISHED
+            else:
+                self.robot_state =  RobotStates.MOVING
         elif self.robot_state == RobotStates.MOVING:
             # Find candidates to move to, get path to it, execute said movements
             #self.c2_smart_move(ir_sensors, robot_location)
             self.c2_move(ir_sensors, robot_location)
             self.robot_state = RobotStates.MAPPING
             self.clean_cells_to_visit()
-            print("VISITED", self.visited_nodes)
             print("TO VISIT", self.nodes_to_visit)
-            pass 
+        elif self.robot_state == RobotStates.FINISHED:
+            self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
+            self.print_map_to_file()
+            print("Map printed to map.txt")
+            self.finish()
+
+
 
     def check_if_reachable(self, curr_cell, dest_cell):
         print("func", curr_cell)
@@ -601,7 +609,7 @@ class Map():
            i=i+1
 
 
-rob_name = "pClient1"
+rob_name = "pyruetas"
 host = "localhost"
 pos = 1
 mapc = None
