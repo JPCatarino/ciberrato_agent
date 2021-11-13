@@ -1,7 +1,8 @@
 import sys
 import itertools
 
-from typing import NamedTuple
+from typing import Any, NamedTuple
+from collections import namedtuple
 from enum import Enum
 
 class IRSensorData(NamedTuple):
@@ -25,17 +26,20 @@ class RobotStates(Enum):
     MAPPING = 1
     FINISHED = 2
         
-class GroundStatus(Enum):
-    normal = -1
-    home = 0
-    beacon1 = 1
-    beacon2 = 2
+class Ground():
+
+    def __init__(self, NBeacons):
+        init_enum_pair = [('normal', -1), ('home', 0)]
+        for beacon in range(1, NBeacons):
+            beacon_string = 'beacon'+ str(beacon)
+            init_enum_pair.append((beacon_string, beacon))
+        self.GroundStatus = Enum('GroundStatus', init_enum_pair)
     
 class GroundSensorData(NamedTuple):
-    status: GroundStatus
+    status: Any
 
-def SetGroundSensorData(status):
-    return GroundSensorData(GroundStatus(status))
+def SetGroundSensorData(status, ground_enum):
+    return GroundSensorData(ground_enum(status))
 
 class PIDController():
     def __init__(self, Kp):

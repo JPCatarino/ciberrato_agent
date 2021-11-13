@@ -181,7 +181,7 @@ class StructureHandler(sax.ContentHandler):
                 return
             self.status = -1
         elif name == "Parameters":
-            self.nBeacons = attrs["NBeacons"]
+            self.nBeacons = int(attrs["NBeacons"])
         elif name=="Measures":
             self.measures.time = int(attrs["Time"])
         elif name=="Sensors":

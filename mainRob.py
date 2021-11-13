@@ -24,6 +24,8 @@ class MyRob(CRobLinkAngs):
         self.map_height = CELLROWS*4-1
         self.map_starting_spot = Point(floor(self.map_height/2), floor(self.map_width/2))
         
+        self.GroundStatus = Ground(self.nBeacons).GroundStatus
+        
         if self.measures.gpsReady:
             self.gps_starting_spot = Point(self.measures.x, self.measures.y)    
             self.gps2cell_offset = (self.measures.x - self.map_starting_spot.y, self.measures.y + self.map_starting_spot.x)
@@ -92,7 +94,7 @@ class MyRob(CRobLinkAngs):
         if self.measures.beaconReady:
             pass
         if self.measures.groundReady:
-            ground = SetGroundSensorData(self.measures.ground)
+            ground = SetGroundSensorData(self.measures.ground, self.GroundStatus)
         if self.measures.gpsReady and self.measures.compassReady:
             robot_location = Point(self.measures.x, self.measures.y)
         
@@ -109,26 +111,6 @@ class MyRob(CRobLinkAngs):
 
         while True:
             ir_sensors, ground, robot_location = self.readAndOrganizeSensors()
-            # Track info on laps in challenge 1
-            if challenge == 1:
-                if ground.status == GroundStatus.beacon1 or ground.status == GroundStatus.beacon2:
-                    if not self.on_beacon:
-                        self.visited_beacons += 1
-                        self.on_beacon = True
-                        print("Visiting Beacon!")
-                else:
-                    self.on_beacon = False
-
-                if self.visited_beacons == 2 and ground.status== GroundStatus.home:
-                    self.laps += 1
-                    print(f"Completed {self.laps} Lap! {10-self.laps} to go")
-                    self.visited_beacons = 0
-
-                if self.laps == 10 or self.measures.time == 4999:
-                    print(f"Final Lap Count: {self.laps}!")
-                    self.finish()
-            elif challenge == 2:
-                pass
 
             if self.measures.endLed:
                 print(self.robName + " exiting")
@@ -159,7 +141,7 @@ class MyRob(CRobLinkAngs):
                 if self.measures.returningLed==True:
                     self.setReturningLed(False)
                 if challenge == 1:
-                    self.c1_move(ir_sensors)
+                    self.c1_brain(ir_sensors, ground)
                 else:
                     self.c2_brain(ir_sensors, robot_location)
     
@@ -228,6 +210,28 @@ class MyRob(CRobLinkAngs):
 
         return orientation_deviation + linear_deviation 
 
+    def c1_brain(self, ir_sensors, ground):
+        # Track info on laps in challenge 1
+
+        if ground.status.value > 0:
+            if not self.on_beacon:
+                self.visited_beacons += 1
+                self.on_beacon = True
+                print("Visiting Beacon!")
+        else:
+            self.on_beacon = False
+
+        if self.visited_beacons == self.nBeacons-1 and ground.status == self.GroundStatus.home:
+            self.laps += 1
+            print(f"Completed {self.laps} Lap! {10-self.laps} to go")
+            self.visited_beacons = 0
+
+        if self.laps == 10 or self.measures.time == 4999:
+            print(f"Final Lap Count: {self.laps}!")
+            self.finish()
+        
+        self.c1_move(ir_sensors)
+
     def c2_brain(self, ir_sensors, robot_location):
         if self.robot_state == RobotStates.MAPPING:
             self.driveMotors(0,0)  
@@ -237,7 +241,7 @@ class MyRob(CRobLinkAngs):
             self.print_map_to_file()
             
             ## IF MAP IS FINISHED STOP, ELSE MOVE
-            if not self.nodes_to_visit:
+            if not self.nodes_to_visit  or self.measures.time == 4999:
                 self.robot_state = RobotStates.FINISHED
             else:
                 self.robot_state =  RobotStates.MOVING
