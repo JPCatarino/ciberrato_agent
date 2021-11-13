@@ -6,6 +6,7 @@ from robtools import *
 from astar import astar
 import xml.etree.ElementTree as ET
 
+# TODO check walls when know map node but not visited yet
 CELLROWS=7
 CELLCOLS=14
 
@@ -291,13 +292,6 @@ class MyRob(CRobLinkAngs):
         
         dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
 
-        # if self.check_if_reachable(Point(round(curr_cell.x), round(curr_cell.y)), dest_cell):
-        #     self.rotate_until(self.get_direction_to_cell(curr_cell, dest_cell).value)
-        #     _, _, robot_location = self.readAndOrganizeSensors()
-        #     dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
-        #     self.move_forward(robot_location, dest_cell)
-        # else:
-
         dest_map_cell = self.robotcell2mapcell(dest_cell)
         dest_map_cell = Point(dest_map_cell.y, dest_map_cell.x)
 
@@ -321,72 +315,6 @@ class MyRob(CRobLinkAngs):
             dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
             self.move_forward(robot_location, dest_cell)
 
-    def c2_smart_move(self, ir_sensors, robot_location):
-        curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
-        curr_cell = self.gps2robotcell(robot_location)
-        threshold = 0.8
-        dest_cell = Point(curr_cell.x, curr_cell.y)
-        if ir_sensors.left < threshold:
-            print("Go Left")
-            if curr_orientation == Orientation.N:
-                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
-                self.rotate_until(Orientation.W.value)
-            elif curr_orientation == Orientation.W:
-                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
-                self.rotate_until(Orientation.S.value)
-            elif curr_orientation == Orientation.S:
-                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
-                self.rotate_until(Orientation.E.value)
-            elif curr_orientation == Orientation.E:
-                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
-                self.rotate_until(Orientation.N.value)
-        elif ir_sensors.right < threshold:
-            print("Go Right")
-            if curr_orientation == Orientation.N:
-                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
-                self.rotate_until(Orientation.E.value)
-            elif curr_orientation == Orientation.W:
-                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
-                self.rotate_until(Orientation.N.value)
-            elif curr_orientation == Orientation.S:
-                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
-                self.rotate_until(Orientation.W.value)
-            elif curr_orientation == Orientation.E:
-                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
-                self.rotate_until(Orientation.S.value)
-        elif ir_sensors.center < threshold:
-            print("Move Forwards")
-            if curr_orientation == Orientation.N:
-                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
-            elif curr_orientation == Orientation.W:
-                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
-            elif curr_orientation == Orientation.S:
-                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
-            elif curr_orientation == Orientation.E:
-                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
-        elif ir_sensors.back < threshold:
-            print("Go back")
-            if curr_orientation == Orientation.N:
-                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
-                self.rotate_until(Orientation.S.value)
-            elif curr_orientation == Orientation.W:
-                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
-                self.rotate_until(Orientation.E.value)
-            elif curr_orientation == Orientation.S:
-                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
-                self.rotate_until(Orientation.N.value)
-            elif curr_orientation == Orientation.E:
-                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
-                self.rotate_until(Orientation.W.value)
-        
-        _, _, robot_location = self.readAndOrganizeSensors()
-        curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
-        # TODO: LOOK INTO ROUNDING PROBLEMS
-        dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
-
-        self.move_forward(robot_location, dest_cell)        
-
-    
     def move_forward(self, robot_location, dest_cell):
         while True:
             deviation = self.calculate_deviation(robot_location, dest_cell)
