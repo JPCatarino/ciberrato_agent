@@ -34,7 +34,7 @@ class MyRob(CRobLinkAngs):
             self.laps = 0
             self.visited_beacons = 0
             self.on_beacon = False
-        elif challenge == 2:    
+        elif challenge == 2 or challenge == 3:    
             self.map = [[' '] * self.map_width for i in range(self.map_height) ]
             self.visited_nodes = []
             self.nodes_to_visit = []
@@ -43,6 +43,8 @@ class MyRob(CRobLinkAngs):
             self.visited_nodes.append(Point(0, 0))
             self.robot_state = RobotStates.MAPPING
             self.move_list = []
+            if challenge == 3:
+                self.beacon_location = {}
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -60,7 +62,12 @@ class MyRob(CRobLinkAngs):
     def clean_cells_to_visit(self):
         aux = [i for i in self.nodes_to_visit if i not in self.visited_nodes]
         self.nodes_to_visit = aux
-    
+
+    def add_beacon_location(self, robot_location, ground):
+        curr_cell = self.gps2mapcell(robot_location)
+        if curr_cell not in self.beacon_location.values():
+            self.beacon_location[ground.status.value] = curr_cell
+
     # Takes GPS coordinates and returns x,y indexes for map
     def gps2mapcell(self, robot_location):
         return Point(round(robot_location.x - self.gps2cell_offset[0]), round(self.gps2cell_offset[1] - robot_location.y))
@@ -143,8 +150,13 @@ class MyRob(CRobLinkAngs):
                     self.setReturningLed(False)
                 if challenge == 1:
                     self.c1_brain(ir_sensors, ground)
-                else:
+                elif challenge == 2:
                     self.c2_brain(ir_sensors, robot_location)
+                elif challenge == 3:
+                    self.c3_brain(ir_sensors, ground, robot_location)
+                else:
+                    print("Not a valid challenge")
+                    exit()
     
     def rotate_until(self, angle):
         print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
@@ -260,6 +272,33 @@ class MyRob(CRobLinkAngs):
             print("Map printed to map.txt")
             self.finish()
 
+    def c3_brain(self, ir_sensors, ground, robot_location):
+        if self.robot_state == RobotStates.MAPPING:
+            self.driveMotors(0,0)  
+            # Mark walls on map, X on curr floor 
+            self.mark_walls()
+            # Save beacon location
+            if ground.status.value > 0:
+                self.add_beacon_location(robot_location, ground)
+            
+            ## IF COMPLETELY MAPPED STOP, IF ALL BEACONS FOUND GO PLAN, OTHERWISE MOVE
+            if not self.nodes_to_visit  or self.measures.time == 4999:
+                self.robot_state = RobotStates.FINISHED
+            #elif len(self.beacon_location) == self.nBeacons - 1:
+            #    self.robot_State = RobotStates.PLANNING
+            else:
+                self.robot_state =  RobotStates.MOVING
+        elif self.robot_state == RobotStates.MOVING:
+            # Find candidates to move to, get path to it, execute said movements
+            print("TO VISIT", self.nodes_to_visit)
+            if self.c2_move(ir_sensors, robot_location):
+                self.robot_state = RobotStates.MAPPING
+            self.clean_cells_to_visit()
+            if self.measures.time == 4999:
+                self.robot_state = RobotStates.FINISHED
+        elif self.robot_state == RobotStates.FINISHED:
+            # Print path to file, exit
+            self.finish()
 
 
     def check_if_reachable(self, curr_cell, dest_cell):
