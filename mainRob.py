@@ -248,13 +248,12 @@ class MyRob(CRobLinkAngs):
                 self.robot_state =  RobotStates.MOVING
         elif self.robot_state == RobotStates.MOVING:
             # Find candidates to move to, get path to it, execute said movements
-            #self.c2_smart_move(ir_sensors, robot_location)
+            print("TO VISIT", self.nodes_to_visit)
             if self.c2_move(ir_sensors, robot_location):
                 self.robot_state = RobotStates.MAPPING
             self.clean_cells_to_visit()
             if self.measures.time == 4999:
                 self.robot_state = RobotStates.FINISHED
-            print("TO VISIT", self.nodes_to_visit)
         elif self.robot_state == RobotStates.FINISHED:
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
             self.print_map_to_file()
@@ -279,7 +278,6 @@ class MyRob(CRobLinkAngs):
     def c2_move(self, ir_sensors, robot_location):
         if not self.move_list:
             curr_cell = self.gps2robotcell(robot_location)
-            print("cells to visit", self.nodes_to_visit, "\n\n\n")
             dest_cell = self.nodes_to_visit.pop()
             
             dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
@@ -290,6 +288,8 @@ class MyRob(CRobLinkAngs):
             curr_map_cell = Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y))
             curr_map_cell = self.robotcell2mapcell(curr_map_cell)
             curr_map_cell = Point(curr_map_cell.y, curr_map_cell.x)
+
+            print(f"MOVING FROM {curr_cell} -> {dest_cell}")
             
             path = astar(self.map, curr_map_cell, dest_map_cell)
             if not path:
@@ -314,7 +314,7 @@ class MyRob(CRobLinkAngs):
             self.move_forward(robot_location, dest_cell)
 
             if need_mapping == True:
-                print("Need to map")
+                print("CELL NEEDS MAPPING")
                 return need_mapping
         return need_mapping
 
