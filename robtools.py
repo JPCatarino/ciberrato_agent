@@ -116,3 +116,6 @@ def path_to_moves(path):
             move_list.append((Point(node[1][1], node[1][0]), Orientation.W))
     
     return move_list
+
+def reverse_point(point):
+    return Point(point.y, point.x)

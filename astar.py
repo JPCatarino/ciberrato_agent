@@ -2,6 +2,7 @@
 # as found at https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
 # Changed Heuristic to manhattan distance and to allow to use out map representation
 from warnings import warn
+from robtools import Point
 import heapq
 
 class Node:
@@ -94,7 +95,7 @@ def astar(maze, start, end):
         for new_position in adjacent_squares: # Adjacent squares
 
             # Get node position
-            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+            node_position = Point(current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
 
             # Make sure within range
             if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
