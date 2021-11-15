@@ -269,7 +269,7 @@ class MyRob(CRobLinkAngs):
         elif self.robot_state == RobotStates.FINISHED:
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
             self.print_map_to_file()
-            print("Map printed to map.txt")
+            print("Map printed to mapping.out")
             self.finish()
 
     def c3_brain(self, ir_sensors, ground, robot_location):
@@ -609,7 +609,7 @@ class MyRob(CRobLinkAngs):
                 self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))           
     
     def print_map_to_file(self):
-        fout = open("map.txt", "w+")
+        fout = open("mapping.out", "w+")
         
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
