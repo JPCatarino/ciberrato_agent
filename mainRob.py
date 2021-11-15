@@ -45,7 +45,7 @@ class MyRob(CRobLinkAngs):
             self.move_list = []
             if challenge == 3:
                 self.beacon_location = {}
-                self.beacon_location[0] = self.map_starting_spot
+                self.beacon_location[0] = Point(self.map_starting_spot.y, self.map_starting_spot.x)
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -298,7 +298,10 @@ class MyRob(CRobLinkAngs):
             if self.measures.time == 4999:
                 self.robot_state = RobotStates.FINISHED
         elif self.robot_state == RobotStates.FINISHED:
-            # Print path to file, exit
+            # Print map, path and distance to file, exit
+            for beacon, location in self.beacon_location.items():
+                self.map[location.y][location.x] = str(beacon)
+            self.print_map_to_file("planning.out")
             self.finish()
 
 
