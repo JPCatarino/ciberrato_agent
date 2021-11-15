@@ -293,6 +293,7 @@ class MyRob(CRobLinkAngs):
             
             path = astar(self.map, curr_map_cell, dest_map_cell)
             if not path:
+                print("astar could not find a path, good luck!")
                 self.desenrasca(ir_sensors, robot_location)
                 return True
             self.move_list = path_to_moves(path)
