@@ -42,6 +42,7 @@ class MyRob(CRobLinkAngs):
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'X'
             self.visited_nodes.append(Point(0, 0))
             self.robot_state = RobotStates.MAPPING
+            self.move_list = []
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -248,9 +249,11 @@ class MyRob(CRobLinkAngs):
         elif self.robot_state == RobotStates.MOVING:
             # Find candidates to move to, get path to it, execute said movements
             #self.c2_smart_move(ir_sensors, robot_location)
-            self.c2_move(ir_sensors, robot_location)
-            self.robot_state = RobotStates.MAPPING
+            if self.c2_move(ir_sensors, robot_location):
+                self.robot_state = RobotStates.MAPPING
             self.clean_cells_to_visit()
+            if self.measures.time == 4999:
+                self.robot_state = RobotStates.FINISHED
             print("TO VISIT", self.nodes_to_visit)
         elif self.robot_state == RobotStates.FINISHED:
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
@@ -261,23 +264,7 @@ class MyRob(CRobLinkAngs):
 
 
     def check_if_reachable(self, curr_cell, dest_cell):
-        print("func", curr_cell)
-        print("fund", dest_cell)
-
-        if abs(dest_cell.x - curr_cell.x) > 2 :
-            print("cond1")
-            return False
-        elif abs(dest_cell.y - curr_cell.y) > 2:
-            print("cond2")
-            return False
-        elif abs(dest_cell.x - curr_cell.x) <= 2 and abs(dest_cell.x - curr_cell.x) > 0 and dest_cell.y != curr_cell.y:
-            print("cond3")
-            return False
-        elif abs(dest_cell.y - curr_cell.y) <= 2 and abs(dest_cell.y - curr_cell.y) > 0 and dest_cell.x != curr_cell.x:
-            print("cond4")
-            return False 
-        else: 
-            return True   
+        pass   
 
     def get_direction_to_cell(self, curr_cell, dest_cell):
         if dest_cell.x > curr_cell.x:
@@ -290,34 +277,109 @@ class MyRob(CRobLinkAngs):
             return Orientation.E 
     
     def c2_move(self, ir_sensors, robot_location):
-        curr_cell = self.gps2robotcell(robot_location)
-        print("cells to visit", self.nodes_to_visit, "\n\n\n")
-        dest_cell = self.nodes_to_visit.pop()
-        
-        dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+        if not self.move_list:
+            curr_cell = self.gps2robotcell(robot_location)
+            print("cells to visit", self.nodes_to_visit, "\n\n\n")
+            dest_cell = self.nodes_to_visit.pop()
+            
+            dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
 
-        dest_map_cell = self.robotcell2mapcell(dest_cell)
-        dest_map_cell = Point(dest_map_cell.y, dest_map_cell.x)
+            dest_map_cell = self.robotcell2mapcell(dest_cell)
+            dest_map_cell = Point(dest_map_cell.y, dest_map_cell.x)
 
-        curr_map_cell = Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y))
-        curr_map_cell = self.robotcell2mapcell(curr_map_cell)
-        curr_map_cell = Point(curr_map_cell.y, curr_map_cell.x)
-        
-        path = astar(self.map, curr_map_cell, dest_map_cell)
-        if not path:
-            print(self.map)
-        move_list = path_to_moves(path)
+            curr_map_cell = Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y))
+            curr_map_cell = self.robotcell2mapcell(curr_map_cell)
+            curr_map_cell = Point(curr_map_cell.y, curr_map_cell.x)
+            
+            path = astar(self.map, curr_map_cell, dest_map_cell)
+            if not path:
+                self.desenrasca()
+            self.move_list = path_to_moves(path)
         #print("Path", path)
         #print("Move to path", path_to_moves(path))
-        while move_list:
-            _ = move_list.pop(0)
-            dest_cell, orientation = move_list.pop(0)
+        need_mapping = False
+        while self.move_list:
+            _ = self.move_list.pop(0)
+            dest_cell, orientation = self.move_list.pop(0)
             dest_cell = self.mapcell2robotcell(dest_cell)
+
+            if dest_cell not in self.visited_nodes:
+                need_mapping = True
             
             self.rotate_until(orientation.value)
             _, _, robot_location = self.readAndOrganizeSensors()
             dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
             self.move_forward(robot_location, dest_cell)
+
+            if need_mapping == True:
+                print("Need to map")
+                return need_mapping
+        return need_mapping
+
+    def desenrasca(self, ir_sensors, robot_location):
+        curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
+        curr_cell = self.gps2robotcell(robot_location)
+        threshold = 0.8
+        dest_cell = Point(curr_cell.x, curr_cell.y)
+        if ir_sensors.left < threshold:
+            print("Go Left")
+            if curr_orientation == Orientation.N:
+                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
+                self.rotate_until(Orientation.W.value)
+            elif curr_orientation == Orientation.W:
+                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
+                self.rotate_until(Orientation.S.value)
+            elif curr_orientation == Orientation.S:
+                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
+                self.rotate_until(Orientation.E.value)
+            elif curr_orientation == Orientation.E:
+                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
+                self.rotate_until(Orientation.N.value)
+        elif ir_sensors.right < threshold:
+            print("Go Right")
+            if curr_orientation == Orientation.N:
+                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
+                self.rotate_until(Orientation.E.value)
+            elif curr_orientation == Orientation.W:
+                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
+                self.rotate_until(Orientation.N.value)
+            elif curr_orientation == Orientation.S:
+                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
+                self.rotate_until(Orientation.W.value)
+            elif curr_orientation == Orientation.E:
+                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
+                self.rotate_until(Orientation.S.value)
+        elif ir_sensors.center < threshold:
+            print("Move Forwards")
+            if curr_orientation == Orientation.N:
+                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
+            elif curr_orientation == Orientation.W:
+                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
+            elif curr_orientation == Orientation.S:
+                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
+            elif curr_orientation == Orientation.E:
+                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
+        elif ir_sensors.back < threshold:
+            print("Go back")
+            if curr_orientation == Orientation.N:
+                dest_cell = Point(curr_cell.x-2.0, curr_cell.y)
+                self.rotate_until(Orientation.S.value)
+            elif curr_orientation == Orientation.W:
+                dest_cell = Point(curr_cell.x, curr_cell.y-2.0)
+                self.rotate_until(Orientation.E.value)
+            elif curr_orientation == Orientation.S:
+                dest_cell = Point(curr_cell.x+2.0, curr_cell.y)
+                self.rotate_until(Orientation.N.value)
+            elif curr_orientation == Orientation.E:
+                dest_cell = Point(curr_cell.x, curr_cell.y+2.0)
+                self.rotate_until(Orientation.W.value)
+
+        _, _, robot_location = self.readAndOrganizeSensors()
+        curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
+        # TODO: LOOK INTO ROUNDING PROBLEMS
+        dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+
+        self.move_forward(robot_location, dest_cell)
 
     def move_forward(self, robot_location, dest_cell):
         while True:
