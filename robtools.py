@@ -25,6 +25,7 @@ class RobotStates(Enum):
     MOVING = 0
     MAPPING = 1
     FINISHED = 2
+    PLANNING = 3
         
 class Ground():
 
