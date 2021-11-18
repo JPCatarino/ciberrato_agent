@@ -26,6 +26,7 @@ class RobotStates(Enum):
     MAPPING = 1
     FINISHED = 2
     PLANNING = 3
+    OPTIMIZING = 4
         
 class Ground():
 
@@ -119,3 +120,32 @@ def path_to_moves(path):
 
 def reverse_point(point):
     return Point(point.y, point.x)
+
+def check_tuple_reverse(a, b):
+    return list(a) == list(reversed(list(b)))
+
+def remove_reversed_duplicates(iterable):
+    # Create a set for already seen elements
+    seen = set()
+    for item in iterable:
+        # Lists are mutable so we need tuples for the set-operations.
+        tup = tuple(item)
+        if tup not in seen:
+            # If the tuple is not in the set append it in REVERSED order.
+            seen.add(tup[::-1])
+            # If you also want to remove normal duplicates uncomment the next line
+            # seen.add(tup)
+            yield item
+
+
+def generatePossiblePaths(nBeacons):
+    beacons = list(range(1, nBeacons))
+    possible_variations = list(itertools.permutations(beacons, len(beacons)))
+    possible_variations = list(remove_reversed_duplicates(possible_variations)) 
+    possible_paths = []
+
+    for variation in possible_variations:
+        npath = [0]
+        npath = npath + list(variation) + [0]
+        possible_paths.append(list(pairwise(npath)))
+    return possible_paths

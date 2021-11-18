@@ -4,6 +4,7 @@ from croblink import *
 from math import *
 from robtools import *
 from astar import astar
+from itertools import combinations
 import xml.etree.ElementTree as ET
 
 # TODO check walls when know map node but not visited yet
@@ -46,6 +47,10 @@ class MyRob(CRobLinkAngs):
             if challenge == 3:
                 self.beacon_location = {}
                 self.beacon_location[0] = Point(self.map_starting_spot.y, self.map_starting_spot.x)
+                self.possible_subpaths = list(combinations(list(range(self.nBeacons)), 2))
+                self.subpaths_cost = {}
+                self.possible_paths = generatePossiblePaths(self.nBeacons)
+                self.path_cost = {}
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -58,6 +63,9 @@ class MyRob(CRobLinkAngs):
     
     def add_to_cells_to_visit(self, cell):
         if cell not in self.visited_nodes and cell not in self.nodes_to_visit:
+            self.nodes_to_visit.append(cell)
+        elif cell in self.nodes_to_visit:
+            self.nodes_to_visit.pop(self.nodes_to_visit.index(cell))
             self.nodes_to_visit.append(cell)
     
     def clean_cells_to_visit(self):
@@ -297,8 +305,15 @@ class MyRob(CRobLinkAngs):
             self.clean_cells_to_visit()
             if self.measures.time == 4999:
                 self.robot_state = RobotStates.FINISHED
+        elif self.robot_state == RobotStates.OPTIMIZING:
+            pass
+        elif self.robot_state == RobotStates.PLANNING:
+            pass
         elif self.robot_state == RobotStates.FINISHED:
             # Print map, path and distance to file, exit
+            print("Printed map and plans to planning.out")
+            print("Printed path to pathC3.out")
+
             for beacon, location in self.beacon_location.items():
                 self.map[location.y][location.x] = str(beacon)
             self.print_map_to_file("planning.out")
