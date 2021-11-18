@@ -41,7 +41,7 @@ def return_path(current_node):
     return path[::-1]  # Return reversed path
 
 
-def astar(maze, start, end):
+def astar(maze, start, end, unknown_as_path=False):
     """
     Returns a list of tuples as a path from the given start to the given end in the given maze
     :param maze:
@@ -132,7 +132,7 @@ def astar(maze, start, end):
     warn("Couldn't get a path to destination")
     return None
 
-def translate_map(cell_value):
+def translate_map(cell_value, unknown_as_path=False):
     cell_types = {
     'X' : 0,
     '?' : 0,
@@ -140,7 +140,10 @@ def translate_map(cell_value):
     '|': 1
     }
 
-    return cell_types.get(cell_value, 1)
+    if not unknown_as_path:
+        return cell_types.get(cell_value, 1)
+    else:
+        return cell_types.get(cell_value, 0)
     
 def example():
 
