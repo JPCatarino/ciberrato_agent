@@ -102,7 +102,7 @@ def astar(maze, start, end, unknown_as_path=False):
                 continue
 
             # Make sure walkable terrain
-            if translate_map(maze[node_position[0]][node_position[1]]) != 0:
+            if translate_map(maze[node_position[0]][node_position[1]], unknown_as_path) != 0:
                 continue
 
             # Create new node
