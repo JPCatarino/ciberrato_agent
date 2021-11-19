@@ -262,7 +262,7 @@ class MyRob(CRobLinkAngs):
             # Mark walls on map, X on curr floor 
             self.mark_walls()
             # Prints to file, maybe only run this in the end due to performance
-            self.print_map_to_file()
+            self.print_map_to_file(filename)
             
             ## IF MAP IS FINISHED STOP, ELSE MOVE
             if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
@@ -279,8 +279,8 @@ class MyRob(CRobLinkAngs):
                 self.robot_state = RobotStates.FINISHED
         elif self.robot_state == RobotStates.FINISHED:
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
-            self.print_map_to_file()
-            print("Map printed to mapping.out")
+            self.print_map_to_file(filename)
+            print("Map printed to {filename}")
             self.finish()
 
     def c3_brain(self, ir_sensors, ground, robot_location):
@@ -372,13 +372,13 @@ class MyRob(CRobLinkAngs):
         elif self.robot_state == RobotStates.FINISHED:
             # Print map, path and distance to file, exit
             print("Printed map and plans to planning.out")
-            print("Printed path to pathC3.out")
+            print("Printed path to {filename}")
 
             for beacon, location in self.beacon_location.items():
                 self.map[location.y][location.x] = str(beacon)
             self.print_map_to_file("planning.out")
             self.print_path_info_to_file("planning.out")
-            self.print_path_to_file()
+            self.print_path_to_file(filename)
             self.finish()
             exit()
 
@@ -923,6 +923,7 @@ host = "localhost"
 pos = 1
 mapc = None
 challenge = 1
+filename = "mapping.out"
 
 for i in range(1, len(sys.argv),2):
     if (sys.argv[i] == "--host" or sys.argv[i] == "-h") and i != len(sys.argv) - 1:
@@ -935,6 +936,8 @@ for i in range(1, len(sys.argv),2):
         mapc = Map(sys.argv[i + 1])
     elif (sys.argv[i] == "--challenge" or sys.argv[i] == "-c") and i != len(sys.argv) - 1:
         challenge = int(sys.argv[i+1])
+    elif (sys.argv[i] == "--file" or sys.argv[i] == "-f") and i != len(sys.argv) - 1:
+        filename = sys.argv[i+1]
     else:
         print("Unkown argument", sys.argv[i])
         quit()
