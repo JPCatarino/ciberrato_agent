@@ -331,7 +331,18 @@ class MyRob(CRobLinkAngs):
                     optimal_subpath[i] = True
                 elif subpath[0] == ground.status.value:
                     subpath_to_optimize = (i, subpath)
-
+            
+            if all(optimal_subpath):
+                print("All subpaths are optimal!")
+                self.robot_state = RobotStates.PLANNING
+                return 0
+            
+            if not subpath_to_optimize:
+                to_optimize = [i for i, x in enumerate(optimal_subpath) if not x]
+                if to_optimize:
+                    index = to_optimize.pop()
+                    subpath_to_optimize = (index, self.shortest_path[index])
+            
             if ground.status.value != subpath_to_optimize[1][0]:
                 self.nodes_to_visit.append(self.mapcell2robotcell(self.beacon_location[subpath_to_optimize[1][0]]))
                 self.c2_move(ir_sensors, robot_location)
@@ -367,7 +378,9 @@ class MyRob(CRobLinkAngs):
             for beacon, location in self.beacon_location.items():
                 self.map[location.y][location.x] = str(beacon)
             self.print_map_to_file("planning.out")
+            self.print_path_info_to_file("planning.out")
             self.finish()
+            exit()
 
     def calculate_path_costs(self):
         for i, p_path in enumerate(self.possible_paths):
@@ -864,6 +877,16 @@ class MyRob(CRobLinkAngs):
             for col in range(len(self.map[row])):
                 fout.write(self.map[row][col])
             fout.write("\n")
+
+    def print_path_info_to_file(self, file_name="planning.out"):
+        fout = open(file_name, 'a')
+
+        fout.write(' 0 ')
+        for subpath in self.shortest_path[1:]:
+            fout.write(str(subpath[0]) + ' ')
+        fout.write('0')
+        fout.write('\n')
+        fout.write(str(self.path_cost[self.shortest_path_index]))
     
     def transform_map(self):
         transformed_map = self.map.copy()
