@@ -40,6 +40,7 @@ class CRobLink:
         self.status = handler.status
         if self.status==0:
             self.nBeacons = handler.nBeacons
+            self.totalTime = handler.totalTime
             #print "nBeacons", self.nBeacons
 
     def readSensors(self):
@@ -182,6 +183,7 @@ class StructureHandler(sax.ContentHandler):
             self.status = -1
         elif name == "Parameters":
             self.nBeacons = int(attrs["NBeacons"])
+            self.totalTime = int(attrs["SimTime"])
         elif name=="Measures":
             self.measures.time = int(attrs["Time"])
         elif name=="Sensors":
