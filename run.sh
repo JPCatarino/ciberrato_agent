@@ -35,15 +35,15 @@ shift $(($OPTIND-1))
 case $challenge in
     1)
         # how to call agent for challenge 1
-        python mainC1.py -h "$host" -p "$pos" -r "$robname"
+        python3 mainRob.py -h "$host" -p "$pos" -r "$robname" -c "$challenge"
         ;;
     2)
         # how to call agent for challenge 2
-        java mainC2 -h "$host" -p "$pos" -r "$robname" -f "$outfile" # assuming -f is the option for the map
+        python3 mainRob.py -h "$host" -p "$pos" -r "$robname" -c "$challenge" -f "$outfile" # assuming -f is the option for the map
         ;;
     3)
         # how to call agent for challenge 3
-        ./mainC3 -h "$host" -p "$pos" -r "$robname" -f "$outfile" # assuming -f is the option for the path
+        python3 mainRob.py -h "$host" -p "$pos" -r "$robname" -c "$challenge" -f "$outfile" # assuming -f is the option for the path
         ;;
 esac
 
