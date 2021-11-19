@@ -465,29 +465,6 @@ class MyRob(CRobLinkAngs):
                     self.mark_walls()
                     self.print_map_to_file("planning.out")
             else:
-                # curr_cell = self.gps2mapcell(robot_location)
-                # threshold = 1.8
-                # threshold_near = 10
-                # if orientation == Orientation.N:
-                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
-                #         self.map[curr_cell.y][curr_cell.x+1] = '|'
-                #     #elif ir_sensors.center >= threshold_near:
-                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
-                # elif orientation == Orientation.W:
-                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
-                #         self.map[curr_cell.y-1][curr_cell.x] = '-'
-                #     #elif ir_sensors.center >= threshold_near:
-                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
-                # elif orientation == Orientation.S:
-                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
-                #         self.map[curr_cell.y][curr_cell.x-1] = '-'
-                #     #elif ir_sensors.center >= threshold_near:
-                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
-                # else:
-                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
-                #         self.map[curr_cell.y+1][curr_cell.x] = '|'
-                #     #elif ir_sensors.center >= threshold_near:
-                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
                 self.print_map_to_file("planning.out")
                 print("NOT POSSIBLE TO MOVE; RECALCULATING")
                 self.driveMotors(0,0)
