@@ -250,7 +250,7 @@ class MyRob(CRobLinkAngs):
             print(f"Completed {self.laps} Lap! {10-self.laps} to go")
             self.visited_beacons = 0
 
-        if self.laps == 10 or self.measures.time == 4999:
+        if self.laps == 10 or self.measures.time == self.totalTime-1:
             print(f"Final Lap Count: {self.laps}!")
             self.finish()
         
@@ -265,7 +265,7 @@ class MyRob(CRobLinkAngs):
             self.print_map_to_file()
             
             ## IF MAP IS FINISHED STOP, ELSE MOVE
-            if not self.nodes_to_visit  or self.measures.time == 4999:
+            if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
                 self.robot_state = RobotStates.FINISHED
             else:
                 self.robot_state =  RobotStates.MOVING
@@ -275,7 +275,7 @@ class MyRob(CRobLinkAngs):
             if self.c2_move(ir_sensors, robot_location):
                 self.robot_state = RobotStates.MAPPING
             self.clean_cells_to_visit()
-            if self.measures.time == 4999:
+            if self.measures.time == self.totalTime-1:
                 self.robot_state = RobotStates.FINISHED
         elif self.robot_state == RobotStates.FINISHED:
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
@@ -293,7 +293,7 @@ class MyRob(CRobLinkAngs):
                 self.add_beacon_location(robot_location, ground)
             
             ## IF COMPLETELY MAPPED STOP, IF ALL BEACONS FOUND GO PLAN, OTHERWISE MOVE
-            if not self.nodes_to_visit  or self.measures.time == 4999:
+            if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
                 self.robot_state = RobotStates.FINISHED
             elif len(self.beacon_location) == self.nBeacons:
                 self.move_list = []
@@ -307,12 +307,11 @@ class MyRob(CRobLinkAngs):
             if self.c2_move(ir_sensors, robot_location):
                 self.robot_state = RobotStates.MAPPING
             self.clean_cells_to_visit()
-            if self.measures.time == 4999:
+            if self.measures.time == self.totalTime-1:
                 self.robot_state = RobotStates.FINISHED
         elif self.robot_state == RobotStates.OPTIMIZING:
             # Check what subpath needs optimization
             optimal_subpath = [False]*len(self.shortest_path)
-            trans_map = self.transform_map()
             subpath_to_optimize = None
             print("STATUS", ground.status.value)
             for i, subpath in enumerate(self.shortest_path):
@@ -321,7 +320,7 @@ class MyRob(CRobLinkAngs):
                 start = reverse_point(self.beacon_location[subpath[0]])
                 dest = reverse_point(self.beacon_location[subpath[1]])
                 path_known = astar(self.map, start, dest, False)
-                path_unk = astar(trans_map, start, dest, True)
+                path_unk = astar(self.map, start, dest, True)
                 cost_known += len(path_known)
                 cost_unk += len(path_unk)
                 print("known", cost_known)
@@ -332,7 +331,7 @@ class MyRob(CRobLinkAngs):
                 elif subpath[0] == ground.status.value:
                     subpath_to_optimize = (i, subpath)
             
-            if all(optimal_subpath):
+            if all(optimal_subpath) or self.measures.time >= self.totalTime - 1:
                 print("All subpaths are optimal!")
                 self.robot_state = RobotStates.PLANNING
                 return 0
@@ -379,6 +378,7 @@ class MyRob(CRobLinkAngs):
                 self.map[location.y][location.x] = str(beacon)
             self.print_map_to_file("planning.out")
             self.print_path_info_to_file("planning.out")
+            self.print_path_to_file()
             self.finish()
             exit()
 
@@ -386,11 +386,10 @@ class MyRob(CRobLinkAngs):
         for i, p_path in enumerate(self.possible_paths):
             cost = 0
             cp_path = []
-            trans_map = self.transform_map()
             for subpath in p_path:
                 start = reverse_point(self.beacon_location[subpath[0]])
                 dest = reverse_point(self.beacon_location[subpath[1]])
-                path = astar(trans_map, start, dest, True)
+                path = astar(self.map, start, dest, True)
                 cp_path = cp_path + path
                 cost += len(path)
             self.path_cost[i] = cost - len(p_path)
@@ -429,7 +428,7 @@ class MyRob(CRobLinkAngs):
 
             print(f"MOVING FROM {curr_cell} -> {dest_cell}")
             
-            path = astar(self.transform_map(), curr_map_cell, dest_map_cell, True)
+            path = astar(self.map, curr_map_cell, dest_map_cell, True)
             if not path:
                 print("astar could not find a path, good luck!")
                 self.desenrasca(ir_sensors, robot_location)
@@ -458,7 +457,7 @@ class MyRob(CRobLinkAngs):
                 self.move_forward(robot_location, dest_cell)
                 _, _, robot_location = self.readAndOrganizeSensors()
                 print("curr LOCATION", self.gps2robotcell(robot_location))
-                self.transform_map()
+                
                 if need_mapping == True:
                     print("CELL NEEDS MAPPING")
                     self.driveMotors(0.0, 0.0)
@@ -864,26 +863,32 @@ class MyRob(CRobLinkAngs):
         fout.write('0')
         fout.write('\n')
         fout.write(str(self.path_cost[self.shortest_path_index]))
-    
-    def transform_map(self):
-        transformed_map = self.map.copy()
-        for row in range(len(self.map)):
-            for col in range(len(self.map[row])):
-                if col > 0 and col < len(self.map[row])-1:
-                    if col % 2 == 0:
-                        if self.map[row][col+1] == '-' and self.map[row][col-1] == '-':
-                            transformed_map[row][col] = '.'
-                        elif self.map[row][col+1] == 'X' and self.map[row][col-1] == '-' \
-                            or self.map[row][col+1] == '-' and self.map[row][col-1] == 'X':
-                            transformed_map[row][col] = '.'
-                    if row > 0 and row < len(self.map) - 1:
-                        if row % 2 == 0:
-                            if self.map[row+1][col] == '|' and self.map[row-1][col] == '|':
-                                transformed_map[row][col] = '.'
-                            elif self.map[row+1][col] == 'X' and self.map[row-1][col] == '|' \
-                                or self.map[row+1][col] == '|' and self.map[row-1][col] == 'X':
-                                transformed_map[row][col] = '.'
-        return transformed_map
+
+    def print_path_to_file(self, file_name="pathC3.out"):
+        fout = open(file_name, "w+")
+        path = []
+
+        for subpath in self.shortest_path:
+            start = reverse_point(self.beacon_location[subpath[0]])
+            dest = reverse_point(self.beacon_location[subpath[1]])
+            path = path + astar(self.map, start, dest, True)
+            path.pop()
+        
+        for i, point in enumerate(path):
+            if i % 2 == 0:
+                if reverse_point(point) not in self.beacon_location.values():
+                    robot_point = self.mapcell2robotcell(reverse_point(point))
+                    fout.write(f"{robot_point.x} {robot_point.y}\n")
+                else:
+                    beacon = list(self.beacon_location.values()).index(reverse_point(point))
+                    robot_point = self.mapcell2robotcell(reverse_point(point))
+                    if beacon == 0:
+                        fout.write(f"{robot_point.x} {robot_point.y}\n")
+                    else:
+                        fout.write(f"{robot_point.x} {robot_point.y} #{beacon}\n")
+        fout.write("0 0")
+
+        fout.close()
 
 class Map():
     def __init__(self, filename):
