@@ -121,6 +121,7 @@ class CRobLinkAngs(CRobLink):
         self.status = handler.status
         if self.status==0:
             self.nBeacons = handler.nBeacons
+            self.totalTime = handler.totalTime
             #print "nBeacons", self.nBeacons
 
 class CMeasures:
