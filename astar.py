@@ -18,6 +18,8 @@ class Node:
         self.h = 0
         self.f = 0
 
+        self.aux = None
+
     def __eq__(self, other):
         return self.position == other.position
     
@@ -66,7 +68,7 @@ def astar(maze, start, end, unknown_as_path=False):
 
     # Adding a stop condition
     outer_iterations = 0
-    max_iterations = (len(maze[0]) * len(maze) // 2)
+    max_iterations = (len(maze[0]) * len(maze))
 
     # what squares do we search
     adjacent_squares = ((0, -1), (0, 1), (-1, 0), (1, 0),)
@@ -91,6 +93,11 @@ def astar(maze, start, end, unknown_as_path=False):
 
         # Generate children
         children = []
+        if current_node.position[0] % 2 == 0 or current_node.position[1] % 2 == 0 and (current_node.position[0] > 0 and current_node.position[0]>0):
+            adjacent_squares = current_node.aux
+        else:
+            adjacent_squares = ((0, -1), (0, 1), (-1, 0), (1, 0),)
+
         
         for new_position in adjacent_squares: # Adjacent squares
 
@@ -107,6 +114,7 @@ def astar(maze, start, end, unknown_as_path=False):
 
             # Create new node
             new_node = Node(current_node, node_position)
+            new_node.aux = [new_position, (-new_position[0], -new_position[1])]
 
             # Append
             children.append(new_node)
@@ -137,7 +145,8 @@ def translate_map(cell_value, unknown_as_path=False):
     'X' : 0,
     '?' : 0,
     '-' : 1,
-    '|': 1
+    '|': 1,
+    '.': 1
     }
 
     if not unknown_as_path:

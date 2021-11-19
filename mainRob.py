@@ -3,7 +3,7 @@ import sys
 from croblink import *
 from math import *
 from robtools import *
-from astar import astar
+from astar import astar, translate_map
 from itertools import combinations
 import xml.etree.ElementTree as ET
 
@@ -51,6 +51,8 @@ class MyRob(CRobLinkAngs):
                 self.subpaths_cost = {}
                 self.possible_paths = generatePossiblePaths(self.nBeacons)
                 self.path_cost = {}
+                self.shortest_path = []
+                self.shortest_path_index = 0
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -293,8 +295,10 @@ class MyRob(CRobLinkAngs):
             ## IF COMPLETELY MAPPED STOP, IF ALL BEACONS FOUND GO PLAN, OTHERWISE MOVE
             if not self.nodes_to_visit  or self.measures.time == 4999:
                 self.robot_state = RobotStates.FINISHED
-            #elif len(self.beacon_location) == self.nBeacons:
-            #    self.robot_State = RobotStates.PLANNING
+            elif len(self.beacon_location) == self.nBeacons:
+                self.move_list = []
+                self.nodes_to_visit = []
+                self.robot_state = RobotStates.PLANNING
             else:
                 self.robot_state =  RobotStates.MOVING
         elif self.robot_state == RobotStates.MOVING:
@@ -306,9 +310,55 @@ class MyRob(CRobLinkAngs):
             if self.measures.time == 4999:
                 self.robot_state = RobotStates.FINISHED
         elif self.robot_state == RobotStates.OPTIMIZING:
-            pass
+            # Check what subpath needs optimization
+            optimal_subpath = [False]*len(self.shortest_path)
+            trans_map = self.transform_map()
+            subpath_to_optimize = None
+            print("STATUS", ground.status.value)
+            for i, subpath in enumerate(self.shortest_path):
+                cost_known = 0
+                cost_unk = 0
+                start = reverse_point(self.beacon_location[subpath[0]])
+                dest = reverse_point(self.beacon_location[subpath[1]])
+                path_known = astar(self.map, start, dest, False)
+                path_unk = astar(trans_map, start, dest, True)
+                cost_known += len(path_known)
+                cost_unk += len(path_unk)
+                print("known", cost_known)
+                print("unk", cost_unk)
+                if cost_known == cost_unk:
+                    print(f"Subpath {subpath} optimized!")
+                    optimal_subpath[i] = True
+                elif subpath[0] == ground.status.value:
+                    subpath_to_optimize = (i, subpath)
+
+            if ground.status.value != subpath_to_optimize[1][0]:
+                self.nodes_to_visit.append(self.mapcell2robotcell(self.beacon_location[subpath_to_optimize[1][0]]))
+                self.c2_move(ir_sensors, robot_location)
+            else:
+                while not optimal_subpath[subpath_to_optimize[0]]:
+                    print("START OPTIMIZING")
+                    ir_sensors, _, robot_location = self.readAndOrganizeSensors()
+                    if self.c3_move(ir_sensors, robot_location, self.beacon_location[subpath_to_optimize[1][1]]):
+                        print("PATH OPTIMIZED")
+                        optimal_subpath[subpath_to_optimize[0]] = True
+                    
+
         elif self.robot_state == RobotStates.PLANNING:
-            pass
+            self.calculate_path_costs()
+            sorted_costs = [k for k, v in sorted(self.path_cost.items(), key=lambda item: item[1])]
+            shortest_path_index = sorted_costs.pop(0)
+            self.shortest_path_index = shortest_path_index
+            self.shortest_path = self.possible_paths[shortest_path_index]
+
+            if self.check_if_need_optimization(shortest_path_index):
+                print("Shortest path can't be pinpointed!")
+                print("Need to explore!")
+                self.robot_state = RobotStates.OPTIMIZING
+            else:
+                print("Shortest path found!")
+                self.robot_state = RobotStates.FINISHED
+               
         elif self.robot_state == RobotStates.FINISHED:
             # Print map, path and distance to file, exit
             print("Printed map and plans to planning.out")
@@ -319,6 +369,119 @@ class MyRob(CRobLinkAngs):
             self.print_map_to_file("planning.out")
             self.finish()
 
+    def calculate_path_costs(self):
+        for i, p_path in enumerate(self.possible_paths):
+            cost = 0
+            cp_path = []
+            trans_map = self.transform_map()
+            for subpath in p_path:
+                start = reverse_point(self.beacon_location[subpath[0]])
+                dest = reverse_point(self.beacon_location[subpath[1]])
+                path = astar(trans_map, start, dest, True)
+                cp_path = cp_path + path
+                cost += len(path)
+            self.path_cost[i] = cost - len(p_path)
+            print(self.possible_paths)
+            print(self.path_cost)
+            print(cp_path)
+    
+    def check_if_need_optimization(self, shortest_path_index):
+        cost_unknowns = self.path_cost[shortest_path_index]
+        cost_known = 0
+        for subpath in self.shortest_path:
+            start = reverse_point(self.beacon_location[subpath[0]])
+            dest = reverse_point(self.beacon_location[subpath[1]])
+            path = astar(self.map, start, dest, False)
+            cost_known += len(path)
+        cost_known = cost_known - len(self.shortest_path)
+
+        print("cost_know", cost_known, "cost_unk", cost_unknowns)
+
+        if cost_known > cost_unknowns:
+            return True
+        else:
+            return False
+
+    def c3_move(self, ir_sensors, robot_location, destination):
+        if not self.move_list:
+            curr_cell = self.gps2robotcell(robot_location)
+            dest_cell = destination
+            
+            dest_map_cell = dest_cell
+            dest_map_cell = Point(dest_map_cell.y, dest_map_cell.x)
+
+            curr_map_cell = Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y))
+            curr_map_cell = self.robotcell2mapcell(curr_map_cell)
+            curr_map_cell = Point(curr_map_cell.y, curr_map_cell.x)
+
+            print(f"MOVING FROM {curr_cell} -> {dest_cell}")
+            
+            path = astar(self.transform_map(), curr_map_cell, dest_map_cell, True)
+            if not path:
+                print("astar could not find a path, good luck!")
+                self.desenrasca(ir_sensors, robot_location)
+                return True
+            self.move_list = path_to_moves(path)
+            print("Path", path)
+            print("Move to path", path_to_moves(path))
+        need_mapping = False
+        while self.move_list:
+            _, prev_orientation = self.move_list.pop(0)
+            dest_cell, orientation = self.move_list.pop(0) 
+            dest_cell = self.mapcell2robotcell(dest_cell)
+
+            if (dest_cell not in self.visited_nodes) and (dest_cell.x % 2 == 0 and dest_cell.y % 2 == 0):
+                need_mapping = True
+                        
+            ir_sensors, _, robot_location = self.readAndOrganizeSensors()
+            print(f"Going from {self.gps2robotcell(robot_location)} -> {dest_cell}")
+
+            if self.check_if_next_is_possible(Orientation[degree_to_cardinal(self.measures.compass)], orientation, ir_sensors) and (prev_orientation == orientation):
+                self.rotate_until(orientation.value)
+                _, _, robot_location = self.readAndOrganizeSensors()
+                print("CONTINUING TO MOVE")
+                
+                dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+                self.move_forward(robot_location, dest_cell)
+                _, _, robot_location = self.readAndOrganizeSensors()
+                print("curr LOCATION", self.gps2robotcell(robot_location))
+                self.transform_map()
+                if need_mapping == True:
+                    print("CELL NEEDS MAPPING")
+                    self.driveMotors(0.0, 0.0)
+                    self.mark_walls()
+                    self.print_map_to_file("planning.out")
+            else:
+                # curr_cell = self.gps2mapcell(robot_location)
+                # threshold = 1.8
+                # threshold_near = 10
+                # if orientation == Orientation.N:
+                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
+                #         self.map[curr_cell.y][curr_cell.x+1] = '|'
+                #     #elif ir_sensors.center >= threshold_near:
+                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
+                # elif orientation == Orientation.W:
+                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
+                #         self.map[curr_cell.y-1][curr_cell.x] = '-'
+                #     #elif ir_sensors.center >= threshold_near:
+                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
+                # elif orientation == Orientation.S:
+                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
+                #         self.map[curr_cell.y][curr_cell.x-1] = '-'
+                #     #elif ir_sensors.center >= threshold_near:
+                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
+                # else:
+                #     if ir_sensors.center >= threshold: #and ir_sensors.center < threshold_near:
+                #         self.map[curr_cell.y+1][curr_cell.x] = '|'
+                #     #elif ir_sensors.center >= threshold_near:
+                #     #    self.map[curr_cell.y][curr_cell.x] = '.'
+                self.print_map_to_file("planning.out")
+                print("NOT POSSIBLE TO MOVE; RECALCULATING")
+                self.driveMotors(0,0)
+                self.move_list = []
+                return False
+
+        return True
 
     def check_if_reachable(self, curr_cell, dest_cell):
         pass   
@@ -332,6 +495,73 @@ class MyRob(CRobLinkAngs):
             return Orientation.W
         else:
             return Orientation.E 
+    
+    def check_if_move_is_possible(self, direction, ir_sensors):
+        threshold = 1.8
+        print("check", ir_sensors)
+        if ir_sensors.center >= threshold:
+            return False
+        else:
+            return True
+    
+    def check_if_next_is_possible(self, curr_direction, next_direction,ir_sensors):
+        threshold = 1.8
+        print("curr", curr_direction)
+        print("next", next_direction)
+        
+        if curr_direction == Orientation.N:
+            if next_direction == Orientation.N:
+                if ir_sensors.center >= threshold:
+                    return False
+            elif next_direction == Orientation.W:
+                if ir_sensors.left >= threshold:
+                    return False
+            elif next_direction == Orientation.S:
+                if ir_sensors.back >= threshold:
+                    return False
+            else:
+                if ir_sensors.right >= threshold:
+                    return False
+        elif curr_direction == Orientation.W:
+            if next_direction == Orientation.N:
+                if ir_sensors.right >= threshold:
+                    return False
+            elif next_direction == Orientation.W:
+                if ir_sensors.center >= threshold:
+                    return False
+            elif next_direction == Orientation.S:
+                if ir_sensors.left >= threshold:
+                    return False
+            else:
+                if ir_sensors.back >= threshold:
+                    return False
+        elif curr_direction == Orientation.S:
+            if next_direction == Orientation.N:
+                if ir_sensors.back >= threshold:
+                    return False
+            elif next_direction == Orientation.W:
+                if ir_sensors.right >= threshold:
+                    return False
+            elif next_direction == Orientation.S:
+                if ir_sensors.center >= threshold:
+                    return False
+            else:
+                if ir_sensors.left >= threshold:
+                    return False
+        elif curr_direction == Orientation.E:
+            if next_direction == Orientation.N:
+                if ir_sensors.left >= threshold:
+                    return False
+            elif next_direction == Orientation.W:
+                if ir_sensors.back >= threshold:
+                    return False
+            elif next_direction == Orientation.S:
+                if ir_sensors.right >= threshold:
+                    return False
+            else:
+                if ir_sensors.center >= threshold:
+                    return False
+        return True
     
     def c2_move(self, ir_sensors, robot_location):
         if not self.move_list:
@@ -634,6 +864,26 @@ class MyRob(CRobLinkAngs):
             for col in range(len(self.map[row])):
                 fout.write(self.map[row][col])
             fout.write("\n")
+    
+    def transform_map(self):
+        transformed_map = self.map.copy()
+        for row in range(len(self.map)):
+            for col in range(len(self.map[row])):
+                if col > 0 and col < len(self.map[row])-1:
+                    if col % 2 == 0:
+                        if self.map[row][col+1] == '-' and self.map[row][col-1] == '-':
+                            transformed_map[row][col] = '.'
+                        elif self.map[row][col+1] == 'X' and self.map[row][col-1] == '-' \
+                            or self.map[row][col+1] == '-' and self.map[row][col-1] == 'X':
+                            transformed_map[row][col] = '.'
+                    if row > 0 and row < len(self.map) - 1:
+                        if row % 2 == 0:
+                            if self.map[row+1][col] == '|' and self.map[row-1][col] == '|':
+                                transformed_map[row][col] = '.'
+                            elif self.map[row+1][col] == 'X' and self.map[row-1][col] == '|' \
+                                or self.map[row+1][col] == '|' and self.map[row-1][col] == 'X':
+                                transformed_map[row][col] = '.'
+        return transformed_map
 
 class Map():
     def __init__(self, filename):
