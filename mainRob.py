@@ -280,7 +280,7 @@ class MyRob(CRobLinkAngs):
         elif self.robot_state == RobotStates.FINISHED:
             self.map[self.map_starting_spot.x][self.map_starting_spot.y] = 'I'
             self.print_map_to_file(filename)
-            print("Map printed to {filename}")
+            print(f"Map printed to {filename}")
             self.finish()
 
     def c3_brain(self, ir_sensors, ground, robot_location):
@@ -372,7 +372,7 @@ class MyRob(CRobLinkAngs):
         elif self.robot_state == RobotStates.FINISHED:
             # Print map, path and distance to file, exit
             print("Printed map and plans to planning.out")
-            print("Printed path to {filename}")
+            print(f"Printed path to {filename}")
 
             for beacon, location in self.beacon_location.items():
                 self.map[location.y][location.x] = str(beacon)
