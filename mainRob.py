@@ -323,8 +323,6 @@ class MyRob(CRobLinkAngs):
                 path_unk = astar(self.map, start, dest, True)
                 cost_known += len(path_known)
                 cost_unk += len(path_unk)
-                print("known", cost_known)
-                print("unk", cost_unk)
                 if cost_known == cost_unk:
                     print(f"Subpath {subpath} optimized!")
                     optimal_subpath[i] = True
@@ -376,8 +374,6 @@ class MyRob(CRobLinkAngs):
 
             for beacon, location in self.beacon_location.items():
                 self.map[location.y][location.x] = str(beacon)
-            self.print_map_to_file("planning.out")
-            self.print_path_info_to_file("planning.out")
             self.print_path_to_file(filename)
             self.finish()
             exit()
@@ -393,9 +389,6 @@ class MyRob(CRobLinkAngs):
                 cp_path = cp_path + path
                 cost += len(path)
             self.path_cost[i] = cost - len(p_path)
-            print(self.possible_paths)
-            print(self.path_cost)
-            print(cp_path)
     
     def check_if_need_optimization(self, shortest_path_index):
         cost_unknowns = self.path_cost[shortest_path_index]
@@ -434,8 +427,8 @@ class MyRob(CRobLinkAngs):
                 self.desenrasca(ir_sensors, robot_location)
                 return True
             self.move_list = path_to_moves(path)
-            print("Path", path)
-            print("Move to path", path_to_moves(path))
+            #print("Path", path)
+            #print("Move to path", path_to_moves(path))
         need_mapping = False
         while self.move_list:
             _, prev_orientation = self.move_list.pop(0)
@@ -462,9 +455,9 @@ class MyRob(CRobLinkAngs):
                     print("CELL NEEDS MAPPING")
                     self.driveMotors(0.0, 0.0)
                     self.mark_walls()
-                    self.print_map_to_file("planning.out")
+                    #self.print_map_to_file("planning.out")
             else:
-                self.print_map_to_file("planning.out")
+                #self.print_map_to_file("planning.out")
                 print("NOT POSSIBLE TO MOVE; RECALCULATING")
                 self.driveMotors(0,0)
                 self.move_list = []
@@ -487,7 +480,6 @@ class MyRob(CRobLinkAngs):
     
     def check_if_move_is_possible(self, direction, ir_sensors):
         threshold = 1.8
-        print("check", ir_sensors)
         if ir_sensors.center >= threshold:
             return False
         else:
@@ -495,8 +487,6 @@ class MyRob(CRobLinkAngs):
     
     def check_if_next_is_possible(self, curr_direction, next_direction,ir_sensors):
         threshold = 1.8
-        print("curr", curr_direction)
-        print("next", next_direction)
         
         if curr_direction == Orientation.N:
             if next_direction == Orientation.N:
@@ -711,7 +701,6 @@ class MyRob(CRobLinkAngs):
         direction = degree_to_cardinal(self.measures.compass)
         curr_cell = self.gps2mapcell(robot_location)
         print("MAPPING")
-        print(ir_sensors)
         threshold = 1.8
         
         if direction == 'N':
@@ -778,7 +767,6 @@ class MyRob(CRobLinkAngs):
                 self.map[curr_cell.y][curr_cell.x-1] = 'X'
                 self.map[curr_cell.y][curr_cell.x-2] = 'X'
                 new_cell_to_visit = Point(curr_cell.x-2, curr_cell.y)
-                print("cell", new_cell_to_visit)
                 self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))
         elif direction == "E":
             if ir_sensors.back >= threshold:
