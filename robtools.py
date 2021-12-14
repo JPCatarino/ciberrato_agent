@@ -4,6 +4,7 @@ import itertools
 from typing import Any, NamedTuple
 from collections import namedtuple
 from enum import Enum
+from math import cos, sin, radians
 
 class IRSensorData(NamedTuple):
         center: float
@@ -149,3 +150,22 @@ def generatePossiblePaths(nBeacons):
         npath = npath + list(variation) + [0]
         possible_paths.append(list(pairwise(npath)))
     return possible_paths
+
+# Mean noise is 1
+def out_t(in_motor, prev_out_t):
+    return (in_motor + prev_out_t) / 2
+
+def lin(out_left, out_right):
+    return (out_left + out_right) / 2
+
+def xt(out_left, out_right, deg, prev_xt):
+    return prev_xt + lin(out_left, out_right) * cos(radians(deg))
+
+def yt(out_left, out_right, deg, prev_yt):
+    return prev_yt + lin(out_left, out_right) * sin(radians(deg))   
+
+def rot(out_left, out_right):
+    return (out_left - out_right) / (2.0 * 0.5) 
+
+def new_angle(out_left, out_right, prev_deg):
+    return prev_deg + rot(out_left, out_right) 
