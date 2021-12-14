@@ -168,4 +168,7 @@ def rot(out_left, out_right):
     return (out_left - out_right) / (2.0 * 0.5) 
 
 def new_angle(out_left, out_right, prev_deg):
-    return prev_deg + rot(out_left, out_right) 
+    return prev_deg + rot(out_left, out_right)
+
+def exponential_mov_avg(sample, alpha, prev_avg):
+    return (sample * alpha) + ((prev_avg) * (1-alpha)); 
