@@ -6,6 +6,7 @@ from robtools import *
 from astar import astar, translate_map
 from itertools import combinations
 import xml.etree.ElementTree as ET
+import time
 
 # TODO check walls when know map node but not visited yet
 CELLROWS=7
@@ -26,6 +27,9 @@ class MyRob(CRobLinkAngs):
         self.map_starting_spot = Point(floor(self.map_height/2), floor(self.map_width/2))
         
         self.GroundStatus = Ground(self.nBeacons).GroundStatus
+
+        self.alpha = 0.85
+        self.prev_avg = 0
         
         if self.measures.gpsReady:
             self.gps_starting_spot = Point(self.measures.x, self.measures.y)    
@@ -35,7 +39,7 @@ class MyRob(CRobLinkAngs):
             self.laps = 0
             self.visited_beacons = 0
             self.on_beacon = False
-        elif challenge == 2 or challenge == 3:    
+        elif challenge == 2 or challenge == 3 or challenge == 4:    
             self.map = [[' '] * self.map_width for i in range(self.map_height) ]
             self.visited_nodes = []
             self.nodes_to_visit = []
@@ -44,7 +48,7 @@ class MyRob(CRobLinkAngs):
             self.visited_nodes.append(Point(0, 0))
             self.robot_state = RobotStates.MAPPING
             self.move_list = []
-            if challenge == 3:
+            if challenge == 3 or challenge == 4:
                 self.beacon_location = {}
                 self.beacon_location[0] = Point(self.map_starting_spot.y, self.map_starting_spot.x)
                 self.possible_subpaths = list(combinations(list(range(self.nBeacons)), 2))
@@ -53,6 +57,11 @@ class MyRob(CRobLinkAngs):
                 self.path_cost = {}
                 self.shortest_path = []
                 self.shortest_path_index = 0
+                if challenge == 4:
+                    self.robot_location = [0, 0]
+                    self.prev_out_l = 0
+                    self.prev_out_r = 0
+                    self.prev_ang = 0
     
     # In this map the center of cell (i,j), (i in 0..6, j in 0..13) is mapped to labMap[i*2][j*2].
     # to know if there is a wall on top of cell(i,j) (i in 0..5), check if the value of labMap[i*2+1][j*2] is space or not
@@ -165,6 +174,8 @@ class MyRob(CRobLinkAngs):
                     self.c2_brain(ir_sensors, robot_location)
                 elif challenge == 3:
                     self.c3_brain(ir_sensors, ground, robot_location)
+                elif challenge == 4:
+                    self.c4_brain(ir_sensors, ground)
                 else:
                     print("Not a valid challenge")
                     exit()
@@ -377,6 +388,106 @@ class MyRob(CRobLinkAngs):
             self.print_path_to_file(filename)
             self.finish()
             exit()
+    
+    def c4_brain(self, ir_sensors, ground):
+        print(ir_sensors)
+        self.move_forward_odometry(ir_sensors)
+        #self.rotate_until_c4(0)
+        self.move_forward_odometry(ir_sensors)
+        self.move_forward_odometry(ir_sensors)
+
+
+        exit()
+
+    def c4_move(self):
+        pass
+
+    def calculate_deviation_odometry(self, ir_sensors):
+        current_cardinal = degree_to_cardinal(self.measures.compass)
+        expected_orientation = Orientation[current_cardinal]
+        if self.measures.compass >= 0:
+            orientation_deviation = radians(expected_orientation.value - self.measures.compass)
+        elif expected_orientation == Orientation.S:
+            orientation_deviation =  radians(abs(self.measures.compass) - expected_orientation.value)
+        else: 
+            orientation_deviation = radians(expected_orientation.value - self.measures.compass)
+        
+        linear_deviation = 0
+        if ir_sensors.left > 2.4:
+            linear_deviation =  2.4 - ir_sensors.left
+        elif ir_sensors.right > 2.4:
+            linear_deviation = ir_sensors.right - 2.4
+        return orientation_deviation + linear_deviation
+
+    def move_forward_odometry(self, ir_sensors):
+        out_l = prev_out_l = out_r = prev_out_r = distance_covered = prev_distance_covered = prev_deg = 0
+        curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
+        start_time = 0
+
+        while abs(distance_covered) < 3.7:
+            prev_out_l = out_l
+            prev_out_r = out_r
+            prev_distance_covered = distance_covered
+            prev_deg = self.measures.compass
+            
+
+            err = self.calculate_deviation_odometry(ir_sensors)
+            #while time.time() - start_time < 0.05:
+            #    pass
+
+            self.driveMotors(0.1 - err, 0.1 + err)
+            start_time = time.time()
+            out_l = out_t(0.1 - err, prev_out_l)
+            out_r = out_t(0.1 + err, prev_out_r)
+
+            if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
+                distance_covered = xt(out_l, out_r, prev_deg, prev_distance_covered)
+            else:
+                distance_covered = yt(out_l, out_r, prev_deg, prev_distance_covered)
+
+            ir_sensors, _, _ = self.readAndOrganizeSensors()
+        pass
+
+    def rotate_until_c4(self, angle):
+        print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
+
+        if self.measures.compass >= 0:
+            orientation_deviation = radians(angle - self.measures.compass)
+        elif angle == Orientation.S.value:
+            orientation_deviation =  radians(abs(self.measures.compass) - angle)
+        else: 
+            orientation_deviation = radians(angle - self.measures.compass)
+
+        while True:
+            deviation = orientation_deviation * 1
+            if abs(deviation) < 0.003:
+                break
+
+            self.driveMotors(0.1-deviation, 0.1+deviation)
+            self.readSensors()
+
+            if self.measures.compass >= 0:
+                orientation_deviation = radians(angle - self.measures.compass)
+            elif angle == Orientation.S.value:
+                orientation_deviation =  radians(abs(self.measures.compass) - angle)
+            else: 
+                orientation_deviation = radians(angle - self.measures.compass)
+
+        self.driveMotors(0, 0)
+
+        print("Final:",angle, self.measures.compass, angle-self.measures.compass)
+
+    def move_test(self, ir_sensors):
+        prevTime = self.measures.time
+        while self.measures.time - prevTime < 20:
+            err = self.calculate_deviation_odometry(ir_sensors)
+            self.driveMotors(0.1 - err , 0.1 + err)
+            ir_sensors, _, _ = self.readAndOrganizeSensors()
+
+            if ir_sensors.center > 2:
+                self.driveMotors(0.0, 0.0)
+            
+        self.driveMotors(0.0, 0.0)
 
     def calculate_path_costs(self):
         for i, p_path in enumerate(self.possible_paths):
@@ -465,9 +576,6 @@ class MyRob(CRobLinkAngs):
 
         return True
 
-    def check_if_reachable(self, curr_cell, dest_cell):
-        pass   
-
     def get_direction_to_cell(self, curr_cell, dest_cell):
         if dest_cell.x > curr_cell.x:
             return Orientation.N
@@ -477,13 +585,6 @@ class MyRob(CRobLinkAngs):
             return Orientation.W
         else:
             return Orientation.E 
-    
-    def check_if_move_is_possible(self, direction, ir_sensors):
-        threshold = 1.8
-        if ir_sensors.center >= threshold:
-            return False
-        else:
-            return True
     
     def check_if_next_is_possible(self, curr_direction, next_direction,ir_sensors):
         threshold = 1.8
