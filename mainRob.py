@@ -415,12 +415,7 @@ class MyRob(CRobLinkAngs):
         else: 
             orientation_deviation = radians(expected_orientation.value - self.measures.compass)
         
-        #linear_deviation = 0
-        #if ir_sensors.left > 2.4:
-        #    linear_deviation =  2.4 - ir_sensors.left
-        #elif ir_sensors.right > 2.4:
-        #    linear_deviation = ir_sensors.right - 2.4
-        return orientation_deviation #+ linear_deviation
+        return orientation_deviation
 
     def move_forward_odometry(self, ir_sensors):
         out_l = prev_out_l = out_r = prev_out_r = distance_covered = prev_distance_covered = deg = prev_deg = 0
@@ -451,15 +446,15 @@ class MyRob(CRobLinkAngs):
                 distance_covered = yt(out_l, out_r, deg, prev_distance_covered)
 
             ir_sensors, _, _ = self.readAndOrganizeSensors()
-            if ir_sensors.center >= 2.1:
-                break
+            if ir_sensors.center >= 1.2:
+                distance_covered = 2.5 - (1/ir_sensors.center)
         
         if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
             self.r_location.x += distance_covered
-            self.r_location.x = round(self.r_location.x)
+            self.r_location.x = self.r_location.x
         else:
             self.r_location.y += distance_covered
-            self.r_location.y = round(self.r_location.y)
+            self.r_location.y = self.r_location.y
         print("loc", self.r_location.x, self.r_location.y)
         print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
         pass
