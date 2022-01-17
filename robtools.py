@@ -28,6 +28,12 @@ class RobotStates(Enum):
     FINISHED = 2
     PLANNING = 3
     OPTIMIZING = 4
+
+class RobotLocation():
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.t = 0
         
 class Ground():
 
@@ -159,10 +165,10 @@ def lin(out_left, out_right):
     return (out_left + out_right) / 2
 
 def xt(out_left, out_right, deg, prev_xt):
-    return prev_xt + lin(out_left, out_right) * cos(radians(deg))
+    return prev_xt + lin(out_left, out_right) * cos(deg)
 
 def yt(out_left, out_right, deg, prev_yt):
-    return prev_yt + lin(out_left, out_right) * sin(radians(deg))   
+    return prev_yt + lin(out_left, out_right) * sin(deg)   
 
 def rot(out_left, out_right):
     return (out_left - out_right) / (2.0 * 0.5) 
@@ -172,3 +178,7 @@ def new_angle(out_left, out_right, prev_deg):
 
 def exponential_mov_avg(sample, alpha, prev_avg):
     return (sample * alpha) + ((prev_avg) * (1-alpha)); 
+
+class dict_to_obj(object):
+    def __init__(self, dictionary):
+        self.__dict__ = dictionary

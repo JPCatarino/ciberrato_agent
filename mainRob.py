@@ -58,7 +58,7 @@ class MyRob(CRobLinkAngs):
                 self.shortest_path = []
                 self.shortest_path_index = 0
                 if challenge == 4:
-                    self.robot_location = [0, 0]
+                    self.r_location = RobotLocation()
                     self.prev_out_l = 0
                     self.prev_out_r = 0
                     self.prev_ang = 0
@@ -392,8 +392,11 @@ class MyRob(CRobLinkAngs):
     def c4_brain(self, ir_sensors, ground):
         print(ir_sensors)
         self.move_forward_odometry(ir_sensors)
-        #self.rotate_until_c4(0)
+        self.rotate_until_c4(90)
         self.move_forward_odometry(ir_sensors)
+        self.rotate_until_c4(180)
+        self.move_forward_odometry(ir_sensors)
+        self.rotate_until_c4(0)
         self.move_forward_odometry(ir_sensors)
 
 
@@ -412,40 +415,53 @@ class MyRob(CRobLinkAngs):
         else: 
             orientation_deviation = radians(expected_orientation.value - self.measures.compass)
         
-        linear_deviation = 0
-        if ir_sensors.left > 2.4:
-            linear_deviation =  2.4 - ir_sensors.left
-        elif ir_sensors.right > 2.4:
-            linear_deviation = ir_sensors.right - 2.4
-        return orientation_deviation + linear_deviation
+        #linear_deviation = 0
+        #if ir_sensors.left > 2.4:
+        #    linear_deviation =  2.4 - ir_sensors.left
+        #elif ir_sensors.right > 2.4:
+        #    linear_deviation = ir_sensors.right - 2.4
+        return orientation_deviation #+ linear_deviation
 
     def move_forward_odometry(self, ir_sensors):
-        out_l = prev_out_l = out_r = prev_out_r = distance_covered = prev_distance_covered = prev_deg = 0
+        out_l = prev_out_l = out_r = prev_out_r = distance_covered = prev_distance_covered = deg = prev_deg = 0
+        deg = radians(self.measures.compass)
         curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
         start_time = 0
 
-        while abs(distance_covered) < 3.7:
+        while abs(distance_covered) < 2.0:
             prev_out_l = out_l
             prev_out_r = out_r
             prev_distance_covered = distance_covered
-            prev_deg = self.measures.compass
+            prev_deg = deg
             
-
             err = self.calculate_deviation_odometry(ir_sensors)
-            #while time.time() - start_time < 0.05:
-            #    pass
+            while time.time() - start_time < 0.05:
+                pass
 
             self.driveMotors(0.1 - err, 0.1 + err)
             start_time = time.time()
-            out_l = out_t(0.1 - err, prev_out_l)
+            out_l = out_t(0.1 - err , prev_out_l)
             out_r = out_t(0.1 + err, prev_out_r)
 
+            deg = new_angle(out_l, out_r, prev_deg)
+
             if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
-                distance_covered = xt(out_l, out_r, prev_deg, prev_distance_covered)
+                distance_covered = xt(out_l, out_r, deg, prev_distance_covered)
             else:
-                distance_covered = yt(out_l, out_r, prev_deg, prev_distance_covered)
+                distance_covered = yt(out_l, out_r, deg, prev_distance_covered)
 
             ir_sensors, _, _ = self.readAndOrganizeSensors()
+            if ir_sensors.center >= 2.1:
+                break
+        
+        if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
+            self.r_location.x += distance_covered
+            self.r_location.x = round(self.r_location.x)
+        else:
+            self.r_location.y += distance_covered
+            self.r_location.y = round(self.r_location.y)
+        print("loc", self.r_location.x, self.r_location.y)
+        print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
         pass
 
     def rotate_until_c4(self, angle):
