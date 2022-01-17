@@ -5,6 +5,7 @@ from math import *
 from robtools import *
 from astar import astar, translate_map
 from itertools import combinations
+from simple_pid import PID
 import xml.etree.ElementTree as ET
 import time
 
@@ -475,37 +476,113 @@ class MyRob(CRobLinkAngs):
         
         return orientation_deviation
 
+    def calculate_deviation_ir(self, ir_sensors, xt, yt, curr_orientation):
+        x_dir = []
+        y_dir = []
+        if curr_orientation == Orientation.N:
+            if ir_sensors.left > 2:
+                y_dir.append(1/ir_sensors.left)
+            if ir_sensors.right > 2:
+                y_dir.append(1 - (1/ir_sensors.right))
+            if ir_sensors.center > 2:
+                x_dir.append(1/ir_sensors.center)
+            if ir_sensors.back > 2:
+                x_dir.append(1 - (1/ir_sensors.back))
+        elif curr_orientation == Orientation.W:
+            if ir_sensors.left > 2:
+                x_dir.append(1 - (1/ir_sensors.left))
+            if ir_sensors.right > 2:
+                x_dir.append(1/ir_sensors.right)
+            if ir_sensors.center > 2:
+                y_dir.append(1/ir_sensors.center)
+            if ir_sensors.back > 2:
+                y_dir.append(1 - (1/ir_sensors.back))
+        elif curr_orientation == Orientation.S:
+            if ir_sensors.left > 2:
+                y_dir.append(1 - (1/ir_sensors.left))
+            if ir_sensors.right > 2:
+                y_dir.append(1/ir_sensors.right)
+            if ir_sensors.center > 2:
+                x_dir.append(1 - (1/ir_sensors.center))
+            if ir_sensors.back > 2:
+                x_dir.append(1/ir_sensors.back)
+        else:
+            if ir_sensors.left > 2:
+                x_dir.append(1/ir_sensors.left)
+            if ir_sensors.right > 2:
+                x_dir.append(1 - (1/ir_sensors.right))
+            if ir_sensors.center > 2:
+                y_dir.append(1 - (1/ir_sensors.center))
+            if ir_sensors.back > 2:
+                y_dir.append(1/ir_sensors.back)
+        
+        if len(x_dir) == 0:
+            x_dir = [0.5]
+        if len(y_dir) == 0:
+            y_dir = [0.5]
+        
+        corrections = [0.5 - sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
+        print("correction", corrections)
+        return xt + corrections[0], yt + corrections[1]
+        pass
+
     def move_forward_odometry(self, ir_sensors):
-        out_l = prev_out_l = out_r = prev_out_r = distance_covered = prev_distance_covered = deg = prev_deg = 0
+        out_l = prev_out_l = out_r = prev_out_r = distance_covered = deg = prev_deg = 0
+        curr_xt = curr_yt = prev_xt = prev_yt = 0
         deg = radians(self.measures.compass)
         curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
         start_time = 0
+        linear_pid = PID(0.17, 0, 0.01, setpoint=2)
+        linear_pid.output_limits = (-0.14, 0.14)
+        orientation_pid = PID(0.02, 0, 0.03)
+        orientation_pid.output_limits = (-0.005, 0.005)
 
-        while abs(distance_covered) < 2.0:
+        while 2 - abs(distance_covered) > 0.02:
             prev_out_l = out_l
             prev_out_r = out_r
-            prev_distance_covered = distance_covered
             prev_deg = deg
+            prev_xt = curr_xt
+            prev_yt = curr_yt
+
+            if curr_orientation == Orientation.N:
+                lin_pid = linear_pid(curr_xt)
+                rot_pid = orientation_pid(curr_yt)
+            elif curr_orientation == Orientation.W:
+                lin_pid = linear_pid(-curr_yt)
+                rot_pid = orientation_pid(curr_xt)
+            elif curr_orientation == Orientation.S:
+                lin_pid = linear_pid(-curr_xt)
+                rot_pid = orientation_pid(-curr_yt)
+            else:
+                lin_pid = linear_pid(curr_yt)
+                rot_pid = orientation_pid(-curr_xt)
             
-            err = self.calculate_deviation_odometry(ir_sensors)
             while time.time() - start_time < 0.05:
                 pass
 
-            self.driveMotors(0.1 - err, 0.1 + err)
+            l = lin_pid - 1 * rot_pid
+            r = lin_pid + 1 * rot_pid
+
+            self.driveMotors(l, r)
             start_time = time.time()
-            out_l = out_t(0.1 - err , prev_out_l)
-            out_r = out_t(0.1 + err, prev_out_r)
+            out_l = out_t(l , prev_out_l)
+            out_r = out_t(r, prev_out_r)
 
             deg = new_angle(out_l, out_r, prev_deg)
 
+            curr_xt = xt(out_l, out_r, deg, prev_xt)
+            curr_yt = yt(out_l, out_r, deg, prev_yt)
+            print("before", curr_yt)
+            curr_xt, curr_yt = self.calculate_deviation_ir(ir_sensors, curr_xt, curr_yt, curr_orientation)
+            print("after", curr_yt)
+
             if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
-                distance_covered = xt(out_l, out_r, deg, prev_distance_covered)
+                distance_covered = curr_xt
             else:
-                distance_covered = yt(out_l, out_r, deg, prev_distance_covered)
+                distance_covered = curr_yt
 
             ir_sensors, _, _ = self.readAndOrganizeSensors()
-            if ir_sensors.center >= 1.2:
-                distance_covered = 2.5 - (1/ir_sensors.center)
+            print(ir_sensors)
         
         if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
             self.r_location.x += distance_covered
