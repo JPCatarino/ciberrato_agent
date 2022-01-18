@@ -399,6 +399,8 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(0,0)  
             # Mark walls on map, X on curr floor 
             self.mark_walls()
+            self.print_map_to_file()
+
             # Save beacon location
             if ground.status.value > 0:
                 self.add_beacon_location(Point(0, 0), ground)
@@ -610,7 +612,7 @@ class MyRob(CRobLinkAngs):
             else:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
 
-        print("correction", corrections)
+        #print("correction", corrections)
         #if ir_sensors.center > 2:
         #    return 
         return corrections[0], corrections[1]
@@ -662,9 +664,9 @@ class MyRob(CRobLinkAngs):
 
             curr_xt = xt(out_l, out_r, deg, prev_xt)
             curr_yt = yt(out_l, out_r, deg, prev_yt)
-            print("before", curr_yt)
+            #print("before", curr_yt)
             curr_xt, curr_yt = self.calculate_deviation_ir(ir_sensors, curr_xt, curr_yt, curr_orientation)
-            print("after", curr_yt)
+            #print("after", curr_yt)
 
             if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
                 distance_covered = curr_xt
