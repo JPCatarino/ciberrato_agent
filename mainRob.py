@@ -59,6 +59,7 @@ class MyRob(CRobLinkAngs):
                 self.shortest_path_index = 0
                 if challenge == 4:
                     self.r_location = RobotLocation()
+                    self.curr_cell = Point(0, 0)
                     self.prev_out_l = 0
                     self.prev_out_r = 0
                     self.prev_ang = 0
@@ -84,7 +85,10 @@ class MyRob(CRobLinkAngs):
         self.nodes_to_visit = aux
 
     def add_beacon_location(self, robot_location, ground):
-        curr_cell = self.gps2mapcell(robot_location)
+        if challenge != 4:
+            curr_cell = self.gps2mapcell(robot_location)
+        else:
+            curr_cell = self.robotcell2mapcell(self.curr_cell)
         if curr_cell not in self.beacon_location.values():
             self.beacon_location[ground.status.value] = curr_cell
 
@@ -390,20 +394,74 @@ class MyRob(CRobLinkAngs):
             exit()
     
     def c4_brain(self, ir_sensors, ground):
-        print(ir_sensors)
-        self.move_forward_odometry(ir_sensors)
-        self.rotate_until_c4(90)
-        self.move_forward_odometry(ir_sensors)
-        self.rotate_until_c4(180)
-        self.move_forward_odometry(ir_sensors)
-        self.rotate_until_c4(0)
-        self.move_forward_odometry(ir_sensors)
+        if self.robot_state == RobotStates.MAPPING:
+            self.driveMotors(0,0)  
+            # Mark walls on map, X on curr floor 
+            self.mark_walls()
+            # Save beacon location
+            if ground.status.value > 0:
+                self.add_beacon_location(Point(0, 0), ground)
+            
+            ## IF COMPLETELY MAPPED STOP, IF ALL BEACONS FOUND GO PLAN, OTHERWISE MOVE
+            if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
+                self.robot_state = RobotStates.FINISHED
+            elif len(self.beacon_location) == self.nBeacons:
+                self.move_list = []
+                self.nodes_to_visit = []
+                self.robot_state = RobotStates.PLANNING
+            else:
+                self.robot_state =  RobotStates.MOVING
+        elif self.robot_state == RobotStates.MOVING:
+            # Find candidates to move to, get path to it, execute said movements
+            print("TO VISIT", self.nodes_to_visit)
+            if self.c4_move_a():
+                self.robot_state = RobotStates.MAPPING
+            self.clean_cells_to_visit()
+            if self.measures.time == self.totalTime-1:
+                self.robot_state = RobotStates.FINISHED
 
+    def c4_move_a(self):
+        if not self.move_list:
+            curr_cell = self.curr_cell
+            dest_cell = self.nodes_to_visit.pop()
+            
+            dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
 
-        exit()
+            dest_map_cell = self.robotcell2mapcell(dest_cell)
+            dest_map_cell = Point(dest_map_cell.y, dest_map_cell.x)
 
-    def c4_move(self):
-        pass
+            curr_map_cell = Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y))
+            curr_map_cell = self.robotcell2mapcell(curr_map_cell)
+            curr_map_cell = Point(curr_map_cell.y, curr_map_cell.x)
+
+            print(f"MOVING FROM {curr_cell} -> {dest_cell}")
+            
+            path = astar(self.map, curr_map_cell, dest_map_cell)
+            self.move_list = path_to_moves(path)
+        #print("Path", path)
+        #print("Move to path", path_to_moves(path))
+        need_mapping = False
+        while self.move_list:
+            _ = self.move_list.pop(0)
+            dest_cell, orientation = self.move_list.pop(0)
+            dest_cell = self.mapcell2robotcell(dest_cell)
+
+            if dest_cell not in self.visited_nodes:
+                need_mapping = True
+            
+            self.rotate_until(orientation.value)
+            ir_sensors, _, _ = self.readAndOrganizeSensors()
+            dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+            self.move_forward_odometry(ir_sensors)
+            self.add_to_visited_cells(dest_cell)
+
+            self.curr_cell = dest_cell
+
+            if need_mapping == True:
+                print("CELL NEEDS MAPPING")
+                return need_mapping
+        return need_mapping
+
 
     def calculate_deviation_odometry(self, ir_sensors):
         current_cardinal = degree_to_cardinal(self.measures.compass)
@@ -811,7 +869,10 @@ class MyRob(CRobLinkAngs):
     def mark_walls(self):
         ir_sensors, ground, robot_location = self.readAndOrganizeSensors()
         direction = degree_to_cardinal(self.measures.compass)
-        curr_cell = self.gps2mapcell(robot_location)
+        if challenge != 4:
+            curr_cell = self.gps2mapcell(robot_location)
+        else:
+            curr_cell = self.robotcell2mapcell(self.curr_cell)
         print("MAPPING")
         threshold = 1.8
         
