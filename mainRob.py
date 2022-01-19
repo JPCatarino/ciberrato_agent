@@ -398,6 +398,7 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(0,0)  
             # Mark walls on map, X on curr floor 
             self.mark_walls()
+            self.print_map_to_file()
             # Save beacon location
             if ground.status.value > 0:
                 self.add_beacon_location(Point(0, 0), ground)
@@ -456,6 +457,7 @@ class MyRob(CRobLinkAngs):
             self.add_to_visited_cells(dest_cell)
 
             self.curr_cell = dest_cell
+            print("CURR", self.curr_cell)
 
             if need_mapping == True:
                 print("CELL NEEDS MAPPING")
@@ -505,7 +507,10 @@ class MyRob(CRobLinkAngs):
 
             ir_sensors, _, _ = self.readAndOrganizeSensors()
             if ir_sensors.center >= 1.2:
-                distance_covered = 2.5 - (1/ir_sensors.center)
+                if curr_orientation == Orientation.N or curr_orientation == Orientation.W:
+                    distance_covered = 2.5 - (1/ir_sensors.center)
+                else:
+                    distance_covered = -2.5 + (1/ir_sensors.center)
         
         if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
             self.r_location.x += distance_covered
