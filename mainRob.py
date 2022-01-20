@@ -605,8 +605,6 @@ class MyRob(CRobLinkAngs):
             else:
                 corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
             
-            if corrections[1] > 0.5:
-                    print("bela bosta")
         else:
             if len(x_dir) == 0:
                 x_dir = [0.5]
@@ -615,8 +613,6 @@ class MyRob(CRobLinkAngs):
             else:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
 
-            if corrections[0] > 0.5:
-                    print("bela bosta")
 
         #print("correction", corrections)
         #if ir_sensors.center > 2:
@@ -663,8 +659,12 @@ class MyRob(CRobLinkAngs):
 
             self.driveMotors(l, r)
             start_time = time.time()
+            temp_l = out_l
+            temp_r = out_r
             out_l = out_t(l , prev_out_l)
             out_r = out_t(r, prev_out_r)
+            prev_out_l = temp_l
+            prev_out_r = temp_r
 
             deg = new_angle(out_l, out_r, prev_deg)
             print("calculated deg", deg)
