@@ -452,7 +452,7 @@ class MyRob(CRobLinkAngs):
             if dest_cell not in self.visited_nodes:
                 need_mapping = True
             
-            self.rotate_until(orientation.value)
+            self.rotate_c4(orientation.value)
             ir_sensors, _, _ = self.readAndOrganizeSensors()
             dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
             self.move_forward_odometry(ir_sensors)
@@ -694,6 +694,24 @@ class MyRob(CRobLinkAngs):
         print("loc", self.r_location.x, self.r_location.y)
         print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
         pass
+
+    def rotate_c4(self, angle):
+        rotationPid = PID(0.002, 0, 0.00005, setpoint=0)
+        rotationPid.output_limits = (-0.15, 0.15)
+        rotationTol = 2
+        orientatio = self.measures.compass
+        rotationPid.setpoint = angle
+
+        while abs(orientatio - rotationPid.setpoint) > rotationTol:
+            orientatio = self.measures.compass
+            rotation_power = rotationPid(orientatio)
+
+            r_l = -1 * rotation_power
+            r_r = rotation_power
+
+            self.driveMotors(r_l, r_r)
+
+            self.readSensors()
 
     def rotate_until_c4(self, angle):
         print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
