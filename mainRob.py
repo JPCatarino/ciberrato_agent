@@ -632,8 +632,8 @@ class MyRob(CRobLinkAngs):
         orientation_pid.output_limits = (-0.005, 0.005)
 
         while 2 - abs(distance_covered) > 0.02:
-            prev_out_l = out_l
-            prev_out_r = out_r
+            #prev_out_l = out_l
+            #prev_out_r = out_r
             prev_deg = deg
             prev_xt = curr_xt
             prev_yt = curr_yt
@@ -703,10 +703,13 @@ class MyRob(CRobLinkAngs):
         rotationPid.setpoint = angle
 
         while abs(orientatio - rotationPid.setpoint) > rotationTol:
-            orientatio = self.measures.compass
+            if angle == 180:
+                orientatio = abs(self.measures.compass)
+            else:
+                orientatio = self.measures.compass
             rotation_power = rotationPid(orientatio)
 
-            r_l = -1 * rotation_power
+            r_l = -rotation_power
             r_r = rotation_power
 
             self.driveMotors(r_l, r_r)
@@ -1070,7 +1073,7 @@ class MyRob(CRobLinkAngs):
             threshold = 1.8
         else:
             curr_cell = self.robotcell2mapcell(self.curr_cell)
-            threshold = 1.2
+            threshold = 1.4
         print("MAPPING")
         
         if direction == 'N':
