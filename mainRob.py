@@ -604,6 +604,9 @@ class MyRob(CRobLinkAngs):
                 corrections = [2.5 - sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
             else:
                 corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
+            
+            if corrections[1] > 0.5:
+                    print("bela bosta")
         else:
             if len(x_dir) == 0:
                 x_dir = [0.5]
@@ -611,6 +614,9 @@ class MyRob(CRobLinkAngs):
                 corrections = [0.5 - sum(x_dir)/len(x_dir), 2.5 - sum(y_dir)/len(y_dir)]
             else:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
+
+            if corrections[0] > 0.5:
+                    print("bela bosta")
 
         #print("correction", corrections)
         #if ir_sensors.center > 2:
@@ -626,7 +632,7 @@ class MyRob(CRobLinkAngs):
         start_time = 0
         linear_pid = PID(0.17, 0, 0.01, setpoint=2)
         linear_pid.output_limits = (-0.14, 0.14)
-        orientation_pid = PID(0.02, 0, 0.03)
+        orientation_pid = PID(0.02, 0, 0.03, setpoint=0)
         orientation_pid.output_limits = (-0.005, 0.005)
 
         while 2 - abs(distance_covered) > 0.02:
@@ -640,14 +646,14 @@ class MyRob(CRobLinkAngs):
                 lin_pid = linear_pid(curr_xt)
                 rot_pid = orientation_pid(curr_yt)
             elif curr_orientation == Orientation.W:
-                lin_pid = linear_pid(-curr_yt)
+                lin_pid = linear_pid(curr_yt)
                 rot_pid = orientation_pid(curr_xt)
             elif curr_orientation == Orientation.S:
-                lin_pid = linear_pid(-curr_xt)
-                rot_pid = orientation_pid(-curr_yt)
+                lin_pid = linear_pid(curr_xt)
+                rot_pid = orientation_pid(curr_yt)
             else:
                 lin_pid = linear_pid(curr_yt)
-                rot_pid = orientation_pid(-curr_xt)
+                rot_pid = orientation_pid(curr_xt)
             
             while time.time() - start_time < 0.05:
                 pass
@@ -661,6 +667,8 @@ class MyRob(CRobLinkAngs):
             out_r = out_t(r, prev_out_r)
 
             deg = new_angle(out_l, out_r, prev_deg)
+            print("calculated deg", deg)
+            print("measured deg", radians(self.measures.compass))
 
             curr_xt = xt(out_l, out_r, deg, prev_xt)
             curr_yt = yt(out_l, out_r, deg, prev_yt)
@@ -682,6 +690,7 @@ class MyRob(CRobLinkAngs):
         else:
             self.r_location.y += distance_covered
             self.r_location.y = self.r_location.y
+        self.driveMotors(0, 0)
         print("loc", self.r_location.x, self.r_location.y)
         print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
         pass
@@ -1040,10 +1049,11 @@ class MyRob(CRobLinkAngs):
         direction = degree_to_cardinal(self.measures.compass)
         if challenge != 4:
             curr_cell = self.gps2mapcell(robot_location)
+            threshold = 1.8
         else:
             curr_cell = self.robotcell2mapcell(self.curr_cell)
+            threshold = 1.2
         print("MAPPING")
-        threshold = 1.8
         
         if direction == 'N':
             if ir_sensors.back >= threshold:
