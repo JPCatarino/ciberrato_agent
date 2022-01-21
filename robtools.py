@@ -1,5 +1,6 @@
 import sys
 import itertools
+import csv
 
 from typing import Any, NamedTuple
 from collections import namedtuple
@@ -177,7 +178,15 @@ def new_angle(out_left, out_right, prev_deg):
     return prev_deg + rot(out_left, out_right)
 
 def exponential_mov_avg(sample, alpha, prev_avg):
-    return (sample * alpha) + ((prev_avg) * (1-alpha)); 
+    return (sample * alpha) + ((prev_avg) * (1-alpha));
+
+def export_loc_csv(filename, time, x_est, y_est, x_real, y_real):
+    data = [time, x_est, y_est, x_real, y_real]
+
+    with open(filename, 'a', encoding='utf8') as f:
+        writer = csv.writer(f)
+        writer.writerow(data) 
+
 
 class dict_to_obj(object):
     def __init__(self, dictionary):

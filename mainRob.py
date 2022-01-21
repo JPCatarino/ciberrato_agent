@@ -5,6 +5,7 @@ from math import *
 from robtools import *
 from astar import astar, translate_map
 from itertools import combinations
+from simple_pid import PID
 import xml.etree.ElementTree as ET
 import time
 
@@ -398,7 +399,8 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(0,0)  
             # Mark walls on map, X on curr floor 
             self.mark_walls()
-            self.print_map_to_file()
+            self.print_map_to_file(filename)
+
             # Save beacon location
             if ground.status.value > 0:
                 self.add_beacon_location(Point(0, 0), ground)
@@ -420,6 +422,75 @@ class MyRob(CRobLinkAngs):
             self.clean_cells_to_visit()
             if self.measures.time == self.totalTime-1:
                 self.robot_state = RobotStates.FINISHED
+        elif self.robot_state == RobotStates.OPTIMIZING:
+            # Check what subpath needs optimization
+            optimal_subpath = [False]*len(self.shortest_path)
+            subpath_to_optimize = None
+            print("STATUS", ground.status.value)
+            for i, subpath in enumerate(self.shortest_path):
+                cost_known = 0
+                cost_unk = 0
+                start = reverse_point(self.beacon_location[subpath[0]])
+                dest = reverse_point(self.beacon_location[subpath[1]])
+                path_known = astar(self.map, start, dest, False)
+                path_unk = astar(self.map, start, dest, True)
+                cost_known += len(path_known)
+                cost_unk += len(path_unk)
+                if cost_known == cost_unk:
+                    print(f"Subpath {subpath} optimized!")
+                    optimal_subpath[i] = True
+                elif subpath[0] == ground.status.value:
+                    subpath_to_optimize = (i, subpath)
+            
+            if all(optimal_subpath) or self.measures.time >= self.totalTime - 1:
+                print("All subpaths are optimal!")
+                self.robot_state = RobotStates.PLANNING
+                return 0
+            
+            if not subpath_to_optimize:
+                to_optimize = [i for i, x in enumerate(optimal_subpath) if not x]
+                if to_optimize:
+                    index = to_optimize.pop()
+                    subpath_to_optimize = (index, self.shortest_path[index])
+            
+            if ground.status.value != subpath_to_optimize[1][0]:
+                self.nodes_to_visit.append(self.mapcell2robotcell(self.beacon_location[subpath_to_optimize[1][0]]))
+                self.c4_move_a()
+            else:
+                while not optimal_subpath[subpath_to_optimize[0]]:
+                    print("START OPTIMIZING")
+                    ir_sensors, _, robot_location = self.readAndOrganizeSensors()
+                    if self.c4_move_b(ir_sensors, self.beacon_location[subpath_to_optimize[1][1]]):
+                        print("PATH OPTIMIZED")
+                        optimal_subpath[subpath_to_optimize[0]] = True
+                    
+
+        elif self.robot_state == RobotStates.PLANNING:
+            self.calculate_path_costs()
+            sorted_costs = [k for k, v in sorted(self.path_cost.items(), key=lambda item: item[1])]
+            shortest_path_index = sorted_costs.pop(0)
+            self.shortest_path_index = shortest_path_index
+            self.shortest_path = self.possible_paths[shortest_path_index]
+
+            if self.check_if_need_optimization(shortest_path_index):
+                print("Shortest path can't be pinpointed!")
+                print("Need to explore!")
+                self.robot_state = RobotStates.OPTIMIZING
+            else:
+                print("Shortest path found!")
+                self.robot_state = RobotStates.FINISHED
+               
+        elif self.robot_state == RobotStates.FINISHED:
+            # Print map, path and distance to file, exit
+            print(f"Printed map to {filename}.map")
+            print(f"Printed path to {filename}.path")
+
+            for beacon, location in self.beacon_location.items():
+                self.map[location.y][location.x] = str(beacon)
+            self.print_path_to_file(filename)
+            self.print_map_to_file(filename)
+            self.finish()
+            exit()
 
     def c4_move_a(self):
         if not self.move_list:
@@ -450,7 +521,7 @@ class MyRob(CRobLinkAngs):
             if dest_cell not in self.visited_nodes:
                 need_mapping = True
             
-            self.rotate_until(orientation.value)
+            self.rotate_c4(orientation.value)
             ir_sensors, _, _ = self.readAndOrganizeSensors()
             dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
             self.move_forward_odometry(ir_sensors)
@@ -463,6 +534,61 @@ class MyRob(CRobLinkAngs):
                 print("CELL NEEDS MAPPING")
                 return need_mapping
         return need_mapping
+
+    def c4_move_b(self, ir_sensors, destination):
+        if not self.move_list:
+            curr_cell = self.curr_cell
+            dest_cell = destination
+            
+            dest_map_cell = dest_cell
+            dest_map_cell = Point(dest_map_cell.y, dest_map_cell.x)
+
+            curr_map_cell = Point(round_up_to_even(curr_cell.x), round_up_to_even(curr_cell.y))
+            curr_map_cell = self.robotcell2mapcell(curr_map_cell)
+            curr_map_cell = Point(curr_map_cell.y, curr_map_cell.x)
+
+            print(f"MOVING FROM {curr_cell} -> {dest_cell}")
+            
+            path = astar(self.map, curr_map_cell, dest_map_cell, True)
+            self.move_list = path_to_moves(path)
+            #print("Path", path)
+            #print("Move to path", path_to_moves(path))
+        need_mapping = False
+        while self.move_list:
+            _, prev_orientation = self.move_list.pop(0)
+            dest_cell, orientation = self.move_list.pop(0) 
+            dest_cell = self.mapcell2robotcell(dest_cell)
+
+            if (dest_cell not in self.visited_nodes) and (dest_cell.x % 2 == 0 and dest_cell.y % 2 == 0):
+                need_mapping = True
+                        
+            ir_sensors, _, _ = self.readAndOrganizeSensors()
+            print(f"Going from {self.curr_cell} -> {dest_cell}")
+
+            if self.check_if_next_is_possible(Orientation[degree_to_cardinal(self.measures.compass)], orientation, ir_sensors) and (prev_orientation == orientation):
+                self.rotate_c4(orientation.value)
+                ir_sensors, _, _ = self.readAndOrganizeSensors()
+                print("CONTINUING TO MOVE")
+                
+                dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
+                self.move_forward_odometry(ir_sensors)
+                self.curr_cell = dest_cell
+                ir_sensors, _, _ = self.readAndOrganizeSensors()
+                print("curr LOCATION", self.curr_cell)
+                
+                if need_mapping == True:
+                    print("CELL NEEDS MAPPING")
+                    self.driveMotors(0.0, 0.0)
+                    self.mark_walls()
+                    #self.print_map_to_file("planning.out")
+            else:
+                #self.print_map_to_file("planning.out")
+                print("NOT POSSIBLE TO MOVE; RECALCULATING")
+                self.driveMotors(0,0)
+                self.move_list = []
+                return False
+
+        return True
 
 
     def calculate_deviation_odometry(self, ir_sensors):
@@ -477,79 +603,192 @@ class MyRob(CRobLinkAngs):
         
         return orientation_deviation
 
+    def calculate_deviation_ir(self, ir_sensors, xt, yt, curr_orientation):
+        x_dir = []
+        y_dir = []
+        if curr_orientation == Orientation.N:
+            if ir_sensors.left > 2:
+                y_dir.append(1/ir_sensors.left)
+            if ir_sensors.right > 2:
+                y_dir.append(1 - (1/ir_sensors.right))
+            if ir_sensors.center > 2:
+                x_dir.append(1/ir_sensors.center)
+            #if ir_sensors.back > 2:
+            #    x_dir.append(1 - (1/ir_sensors.back))
+        elif curr_orientation == Orientation.W:
+            if ir_sensors.left > 2:
+                x_dir.append(1 - (1/ir_sensors.left))
+            if ir_sensors.right > 2:
+                x_dir.append(1/ir_sensors.right)
+            if ir_sensors.center > 2:
+                y_dir.append(1/ir_sensors.center)
+            #if ir_sensors.back > 2:
+            #    y_dir.append(1 - (1/ir_sensors.back))
+        elif curr_orientation == Orientation.S:
+            if ir_sensors.left > 2:
+                y_dir.append(1 - (1/ir_sensors.left))
+            if ir_sensors.right > 2:
+                y_dir.append(1/ir_sensors.right)
+            if ir_sensors.center > 2:
+                x_dir.append(1 - (1/ir_sensors.center))
+            #if ir_sensors.back > 2:
+            #    x_dir.append(1/ir_sensors.back)
+        else:
+            if ir_sensors.left > 2:
+                x_dir.append(1/ir_sensors.left)
+            if ir_sensors.right > 2:
+                x_dir.append(1 - (1/ir_sensors.right))
+            if ir_sensors.center > 2:
+                y_dir.append(1 - (1/ir_sensors.center))
+            #if ir_sensors.back > 2:
+            #    y_dir.append(1/ir_sensors.back)
+        
+        #if len(x_dir) == 0:
+        #    x_dir = [0.5]
+        #if len(y_dir) == 0:
+        #    y_dir = [0.5]
+        
+        if curr_orientation == Orientation.N:
+            if len(y_dir) == 0:
+                y_dir = [0.5]
+            if len(x_dir) > 0:
+                corrections = [2.5 - sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
+            else:
+                corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
+        elif curr_orientation == Orientation.S:
+            if len(y_dir) == 0:
+                y_dir = [0.5]
+            if len(x_dir) > 0:
+                corrections = [2.5 + sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
+            else:
+                corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
+            
+        elif curr_orientation == Orientation.W:
+            if len(x_dir) == 0:
+                x_dir = [0.5]
+            if len(y_dir) > 0:
+                corrections = [0.5 - sum(x_dir)/len(x_dir), 2.5 - sum(y_dir)/len(y_dir)]
+            else:
+                corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
+        else: 
+            if len(x_dir) == 0:
+                x_dir = [0.5]
+            if len(y_dir) > 0:
+                corrections = [0.5 - sum(x_dir)/len(x_dir), 2.5 + sum(y_dir)/len(y_dir)]
+            else:
+                corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
+
+
+        #print("correction", corrections)
+        #if ir_sensors.center > 2:
+        #    return 
+        return corrections[0], corrections[1]
+        pass
+
     def move_forward_odometry(self, ir_sensors):
-        out_l = prev_out_l = out_r = prev_out_r = distance_covered = prev_distance_covered = deg = prev_deg = 0
+        out_l = prev_out_l = out_r = prev_out_r = distance_covered = deg = prev_deg = 0
+        curr_xt = curr_yt = prev_xt = prev_yt = 0
         deg = radians(self.measures.compass)
         curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
         start_time = 0
+        linear_pid = PID(0.30, 0, 0.02, setpoint=2)
+        linear_pid.output_limits = (-0.14, 0.14)
+        orientation_pid = PID(0.01, 0, 0.05, setpoint=0)
+        orientation_pid.output_limits = (-0.007, 0.007)
 
-        while abs(distance_covered) < 2.0:
-            prev_out_l = out_l
-            prev_out_r = out_r
-            prev_distance_covered = distance_covered
+        while 2 - abs(distance_covered) > 0.02:
+            #prev_out_l = out_l
+            #prev_out_r = out_r
             prev_deg = deg
+            prev_xt = curr_xt
+            prev_yt = curr_yt
+
+            if curr_orientation == Orientation.N:
+                lin_pid = linear_pid(curr_xt)
+                rot_pid = orientation_pid(0 + curr_yt)
+            elif curr_orientation == Orientation.W:
+                lin_pid = linear_pid(curr_yt)
+                rot_pid = orientation_pid(0 - curr_xt)
+            elif curr_orientation == Orientation.S:
+                lin_pid = linear_pid(-curr_xt)
+                rot_pid = orientation_pid(0 - curr_yt)
+            else:
+                lin_pid = linear_pid(-curr_yt)
+                rot_pid = orientation_pid(0 + curr_xt)
             
-            err = self.calculate_deviation_odometry(ir_sensors)
             while time.time() - start_time < 0.05:
                 pass
 
-            self.driveMotors(0.1 - err, 0.1 + err)
+            l = lin_pid - rot_pid
+            r = lin_pid + rot_pid
+
+            self.driveMotors(l, r)
             start_time = time.time()
-            out_l = out_t(0.1 - err , prev_out_l)
-            out_r = out_t(0.1 + err, prev_out_r)
+            temp_l = out_l
+            temp_r = out_r
+            out_l = out_t(l , prev_out_l)
+            out_r = out_t(r, prev_out_r)
+            prev_out_l = temp_l
+            prev_out_r = temp_r
 
             deg = new_angle(out_l, out_r, prev_deg)
 
-            if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
-                distance_covered = xt(out_l, out_r, deg, prev_distance_covered)
-            else:
-                distance_covered = yt(out_l, out_r, deg, prev_distance_covered)
+            curr_xt = xt(out_l, out_r, deg, prev_xt)
+            curr_yt = yt(out_l, out_r, deg, prev_yt)
+            #print("before", curr_yt)
+            curr_xt, curr_yt = self.calculate_deviation_ir(ir_sensors, curr_xt, curr_yt, curr_orientation)
+            #print("after", curr_yt)
 
+            if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
+                distance_covered = curr_xt
+            else:
+                distance_covered = curr_yt
+                
             ir_sensors, _, _ = self.readAndOrganizeSensors()
-            if ir_sensors.center >= 1.2:
-                if curr_orientation == Orientation.N or curr_orientation == Orientation.W:
-                    distance_covered = 2.5 - (1/ir_sensors.center)
-                else:
-                    distance_covered = -2.5 + (1/ir_sensors.center)
         
-        if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
+        if curr_orientation == Orientation.N:
+            print("N - dist:", distance_covered)
             self.r_location.x += distance_covered
-            self.r_location.x = self.r_location.x
-        else:
+        elif curr_orientation == Orientation.W:
+            print("W - dist:", distance_covered)
             self.r_location.y += distance_covered
-            self.r_location.y = self.r_location.y
-        print("loc", self.r_location.x, self.r_location.y)
-        print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
+        elif curr_orientation == Orientation.S:
+            print("S - dist:", distance_covered)
+            if distance_covered > 0:
+                self.r_location.x += (1.02 - distance_covered)
+            else:
+                self.r_location.x += distance_covered
+        else:
+            print("E - dist:", distance_covered)
+            if distance_covered > 0:
+                self.r_location.y += (1.02 - distance_covered)
+            else:
+                self.r_location.y += distance_covered
+        self.driveMotors(0, 0)
+        #if self.measures.gpsReady:
+            #gps_cell = self.gps2robotcell(Point(self.measures.x, self.measures.y))
+            #export_loc_csv("lin030004rot001005lim0007.csv", self.measures.time, round(self.r_location.x, 3), round(self.r_location.y, 3), round(gps_cell.x, 3), round(gps_cell.y, 3))
         pass
 
-    def rotate_until_c4(self, angle):
-        print("Initial:",angle, self.measures.compass, angle-self.measures.compass)
+    def rotate_c4(self, angle):
+        rot_pid = PID(0.002, 0, 0.00005, setpoint=angle)
+        rot_pid.output_limits = (-0.15, 0.15)
 
-        if self.measures.compass >= 0:
-            orientation_deviation = radians(angle - self.measures.compass)
-        elif angle == Orientation.S.value:
-            orientation_deviation =  radians(abs(self.measures.compass) - angle)
-        else: 
-            orientation_deviation = radians(angle - self.measures.compass)
+        curr_deg = self.measures.compass
 
-        while True:
-            deviation = orientation_deviation * 1
-            if abs(deviation) < 0.003:
-                break
+        while abs(curr_deg - rot_pid.setpoint) > 2:
+            if angle == 180:
+                curr_deg = abs(self.measures.compass)
+            else:
+                curr_deg = self.measures.compass
+            rot = rot_pid(curr_deg)
 
-            self.driveMotors(0.1-deviation, 0.1+deviation)
+            l = -rot
+            r = rot
+
+            self.driveMotors(l, r)
+
             self.readSensors()
-
-            if self.measures.compass >= 0:
-                orientation_deviation = radians(angle - self.measures.compass)
-            elif angle == Orientation.S.value:
-                orientation_deviation =  radians(abs(self.measures.compass) - angle)
-            else: 
-                orientation_deviation = radians(angle - self.measures.compass)
-
-        self.driveMotors(0, 0)
-
-        print("Final:",angle, self.measures.compass, angle-self.measures.compass)
 
     def move_test(self, ir_sensors):
         prevTime = self.measures.time
@@ -876,10 +1115,11 @@ class MyRob(CRobLinkAngs):
         direction = degree_to_cardinal(self.measures.compass)
         if challenge != 4:
             curr_cell = self.gps2mapcell(robot_location)
+            threshold = 1.8
         else:
             curr_cell = self.robotcell2mapcell(self.curr_cell)
+            threshold = 1.4
         print("MAPPING")
-        threshold = 1.8
         
         if direction == 'N':
             if ir_sensors.back >= threshold:
@@ -1012,15 +1252,15 @@ class MyRob(CRobLinkAngs):
                 new_cell_to_visit = Point(curr_cell.x, curr_cell.y+2)
                 self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))           
     
-    def print_map_to_file(self, file_name="mapping.out"):
-        fout = open(file_name, "w+")
+    def print_map_to_file(self, file_name="mapping"):
+        fout = open(file_name+".map", "w+")
         
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
                 fout.write(self.map[row][col])
             fout.write("\n")
 
-    def print_path_info_to_file(self, file_name="planning.out"):
+    def print_path_info_to_file(self, file_name="planning"):
         fout = open(file_name, 'a')
 
         fout.write(' 0 ')
@@ -1030,8 +1270,8 @@ class MyRob(CRobLinkAngs):
         fout.write('\n')
         fout.write(str(self.path_cost[self.shortest_path_index]))
 
-    def print_path_to_file(self, file_name="pathC3.out"):
-        fout = open(file_name, "w+")
+    def print_path_to_file(self, file_name="path.path"):
+        fout = open(file_name+".path", "w+")
         path = []
 
         for subpath in self.shortest_path:
