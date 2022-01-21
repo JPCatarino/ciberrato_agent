@@ -399,7 +399,7 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(0,0)  
             # Mark walls on map, X on curr floor 
             self.mark_walls()
-            self.print_map_to_file()
+            self.print_map_to_file(filename)
 
             # Save beacon location
             if ground.status.value > 0:
@@ -482,13 +482,13 @@ class MyRob(CRobLinkAngs):
                
         elif self.robot_state == RobotStates.FINISHED:
             # Print map, path and distance to file, exit
-            print("Printed map and plans to planning.out")
-            print(f"Printed path to {filename}")
+            print("Printed map to {filename}.map")
+            print(f"Printed path to {filename}.path")
 
             for beacon, location in self.beacon_location.items():
                 self.map[location.y][location.x] = str(beacon)
             self.print_path_to_file(filename)
-            self.print_path_info_to_file()
+            self.print_map_to_file(filename)
             self.finish()
             exit()
 
@@ -1251,15 +1251,15 @@ class MyRob(CRobLinkAngs):
                 new_cell_to_visit = Point(curr_cell.x, curr_cell.y+2)
                 self.add_to_cells_to_visit(self.mapcell2robotcell(new_cell_to_visit))           
     
-    def print_map_to_file(self, file_name="mapping.out"):
-        fout = open(file_name, "w+")
+    def print_map_to_file(self, file_name="mapping"):
+        fout = open(file_name+".map", "w+")
         
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
                 fout.write(self.map[row][col])
             fout.write("\n")
 
-    def print_path_info_to_file(self, file_name="planning.out"):
+    def print_path_info_to_file(self, file_name="planning"):
         fout = open(file_name, 'a')
 
         fout.write(' 0 ')
@@ -1269,8 +1269,8 @@ class MyRob(CRobLinkAngs):
         fout.write('\n')
         fout.write(str(self.path_cost[self.shortest_path_index]))
 
-    def print_path_to_file(self, file_name="pathC3.out"):
-        fout = open(file_name, "w+")
+    def print_path_to_file(self, file_name="path.path"):
+        fout = open(file_name+".path", "w+")
         path = []
 
         for subpath in self.shortest_path:
