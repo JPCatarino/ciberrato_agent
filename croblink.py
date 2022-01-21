@@ -59,7 +59,14 @@ class CRobLink:
 #            status = -1
 #            return 
         self.status = handler.status
-        self.measures  = handler.measures
+        self.measures  = self.averaging(handler.measures)
+    
+    def averaging(self, readings):
+        self.ir_reads = self.ir_reads[1:] + [readings.irSensor]
+
+        readings.irSensor = [round(sum(sensor) / 3, 1) for sensor in zip(self.ir_reads[0], self.ir_reads[1], self.ir_reads[2])]
+
+        return readings
         
     def driveMotors(self, lPow, rPow):
         msg = '<Actions LeftMotor="'+str(lPow)+'" RightMotor="'+str(rPow)+'"/>'
@@ -88,7 +95,8 @@ class CRobLinkAngs(CRobLink):
         self.robId = robId
         self.host = host
         self.angs = angs
-
+        self.ir_reads = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        self.compass_reads = [0, 0, 0]
 
         self.sock = socket.socket(socket.AF_INET, # Internet
                              socket.SOCK_DGRAM) # UDP

@@ -482,44 +482,40 @@ class MyRob(CRobLinkAngs):
         x_dir = []
         y_dir = []
         if curr_orientation == Orientation.N:
-            if ir_sensors.left > 1:
+            if ir_sensors.left > 2:
                 y_dir.append(1/ir_sensors.left)
-            if ir_sensors.right > 1:
+            if ir_sensors.right > 2:
                 y_dir.append(1 - (1/ir_sensors.right))
-            if ir_sensors.center > 1:
+            if ir_sensors.center > 2:
                 x_dir.append(1/ir_sensors.center)
-                #return 2.5 - 1/ir_sensors.center, yt
-            #if ir_sensors.back > 1:
+            #if ir_sensors.back > 2:
             #    x_dir.append(1 - (1/ir_sensors.back))
         elif curr_orientation == Orientation.W:
-            if ir_sensors.left > 1:
+            if ir_sensors.left > 2:
                 x_dir.append(1 - (1/ir_sensors.left))
-            if ir_sensors.right > 1:
+            if ir_sensors.right > 2:
                 x_dir.append(1/ir_sensors.right)
-            if ir_sensors.center > 1:
+            if ir_sensors.center > 2:
                 y_dir.append(1/ir_sensors.center)
-                #return xt, 2.5 - 1/ir_sensors.center
-            #if ir_sensors.back > 1:
+            #if ir_sensors.back > 2:
             #    y_dir.append(1 - (1/ir_sensors.back))
         elif curr_orientation == Orientation.S:
-            if ir_sensors.left > 1:
+            if ir_sensors.left > 2:
                 y_dir.append(1 - (1/ir_sensors.left))
-            if ir_sensors.right > 1:
+            if ir_sensors.right > 2:
                 y_dir.append(1/ir_sensors.right)
             if ir_sensors.center > 1:
                 x_dir.append(1 - (1/ir_sensors.center))
-                #return 2.5 - 1/ir_sensors.center, yt
-            #if ir_sensors.back > 1:
+            #if ir_sensors.back > 2:
             #    x_dir.append(1/ir_sensors.back)
         else:
-            if ir_sensors.left > 1:
+            if ir_sensors.left > 2:
                 x_dir.append(1/ir_sensors.left)
-            if ir_sensors.right > 1:
+            if ir_sensors.right > 2:
                 x_dir.append(1 - (1/ir_sensors.right))
             if ir_sensors.center > 1:
                 y_dir.append(1 - (1/ir_sensors.center))
-                #return xt, 2.5 - 1/ir_sensors.center
-            #if ir_sensors.back > 1:
+            #if ir_sensors.back > 2:
             #    y_dir.append(1/ir_sensors.back)
         
         #if len(x_dir) == 0:
@@ -527,89 +523,33 @@ class MyRob(CRobLinkAngs):
         #if len(y_dir) == 0:
         #    y_dir = [0.5]
         
-        if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
+        if curr_orientation == Orientation.N:
             if len(y_dir) == 0:
                 y_dir = [0.5]
             if len(x_dir) > 0:
                 corrections = [2.5 - sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
             else:
                 corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
-        else:
+        elif curr_orientation == Orientation.S:
+            if len(y_dir) == 0:
+                y_dir = [0.5]
+            if len(x_dir) > 0:
+                corrections = [-2.5 + sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
+            else:
+                corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
+            
+        elif curr_orientation == Orientation.W:
             if len(x_dir) == 0:
                 x_dir = [0.5]
             if len(y_dir) > 0:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), 2.5 - sum(y_dir)/len(y_dir)]
             else:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
-
-        print("correction", corrections)
-        #if ir_sensors.center > 2:
-        #    return 
-        return corrections[0], corrections[1]
-        pass
-
-    def calculate_deviation_ir(self, ir_sensors, xt, yt, curr_orientation):
-        x_dir = []
-        y_dir = []
-        if curr_orientation == Orientation.N:
-            if ir_sensors.left > 1:
-                y_dir.append(1/ir_sensors.left)
-            if ir_sensors.right > 1:
-                y_dir.append(1 - (1/ir_sensors.right))
-            if ir_sensors.center > 1:
-                x_dir.append(1/ir_sensors.center)
-                #return 2.5 - 1/ir_sensors.center, yt
-            #if ir_sensors.back > 1:
-            #    x_dir.append(1 - (1/ir_sensors.back))
-        elif curr_orientation == Orientation.W:
-            if ir_sensors.left > 1:
-                x_dir.append(1 - (1/ir_sensors.left))
-            if ir_sensors.right > 1:
-                x_dir.append(1/ir_sensors.right)
-            if ir_sensors.center > 1:
-                y_dir.append(1/ir_sensors.center)
-                #return xt, 2.5 - 1/ir_sensors.center
-            #if ir_sensors.back > 1:
-            #    y_dir.append(1 - (1/ir_sensors.back))
-        elif curr_orientation == Orientation.S:
-            if ir_sensors.left > 1:
-                y_dir.append(1 - (1/ir_sensors.left))
-            if ir_sensors.right > 1:
-                y_dir.append(1/ir_sensors.right)
-            if ir_sensors.center > 1:
-                x_dir.append(1 - (1/ir_sensors.center))
-                #return 2.5 - 1/ir_sensors.center, yt
-            #if ir_sensors.back > 1:
-            #    x_dir.append(1/ir_sensors.back)
-        else:
-            if ir_sensors.left > 1:
-                x_dir.append(1/ir_sensors.left)
-            if ir_sensors.right > 1:
-                x_dir.append(1 - (1/ir_sensors.right))
-            if ir_sensors.center > 1:
-                y_dir.append(1 - (1/ir_sensors.center))
-                #return xt, 2.5 - 1/ir_sensors.center
-            #if ir_sensors.back > 1:
-            #    y_dir.append(1/ir_sensors.back)
-        
-        #if len(x_dir) == 0:
-        #    x_dir = [0.5]
-        #if len(y_dir) == 0:
-        #    y_dir = [0.5]
-        
-        if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
-            if len(y_dir) == 0:
-                y_dir = [0.5]
-            if len(x_dir) > 0:
-                corrections = [2.5 - sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
-            else:
-                corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
-            
-        else:
+        else: 
             if len(x_dir) == 0:
                 x_dir = [0.5]
             if len(y_dir) > 0:
-                corrections = [0.5 - sum(x_dir)/len(x_dir), 2.5 - sum(y_dir)/len(y_dir)]
+                corrections = [0.5 - sum(x_dir)/len(x_dir), -2.5 + sum(y_dir)/len(y_dir)]
             else:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
 
@@ -640,22 +580,22 @@ class MyRob(CRobLinkAngs):
 
             if curr_orientation == Orientation.N:
                 lin_pid = linear_pid(curr_xt)
-                rot_pid = orientation_pid(curr_yt)
+                rot_pid = orientation_pid(0 + curr_yt)
             elif curr_orientation == Orientation.W:
                 lin_pid = linear_pid(curr_yt)
-                rot_pid = orientation_pid(curr_xt)
+                rot_pid = orientation_pid(0 - curr_xt)
             elif curr_orientation == Orientation.S:
-                lin_pid = linear_pid(curr_xt)
-                rot_pid = orientation_pid(curr_yt)
+                lin_pid = linear_pid(-curr_xt)
+                rot_pid = orientation_pid(0 - curr_yt)
             else:
-                lin_pid = linear_pid(curr_yt)
-                rot_pid = orientation_pid(curr_xt)
+                lin_pid = linear_pid(-curr_yt)
+                rot_pid = orientation_pid(0 + curr_xt)
             
             while time.time() - start_time < 0.05:
                 pass
 
-            l = lin_pid - 1 * rot_pid
-            r = lin_pid + 1 * rot_pid
+            l = lin_pid - rot_pid
+            r = lin_pid + rot_pid
 
             self.driveMotors(l, r)
             start_time = time.time()
@@ -675,12 +615,16 @@ class MyRob(CRobLinkAngs):
             #print("before", curr_yt)
             curr_xt, curr_yt = self.calculate_deviation_ir(ir_sensors, curr_xt, curr_yt, curr_orientation)
             #print("after", curr_yt)
+            if curr_orientation == Orientation.S:
+                print("curr_xt", curr_xt)
 
             if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
                 distance_covered = curr_xt
+                if curr_orientation == Orientation.S:
+                    print("dist_cov", distance_covered)
             else:
                 distance_covered = curr_yt
-
+                
             ir_sensors, _, _ = self.readAndOrganizeSensors()
             print(ir_sensors)
         
