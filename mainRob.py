@@ -504,7 +504,7 @@ class MyRob(CRobLinkAngs):
                 y_dir.append(1 - (1/ir_sensors.left))
             if ir_sensors.right > 2:
                 y_dir.append(1/ir_sensors.right)
-            if ir_sensors.center > 1:
+            if ir_sensors.center > 2:
                 x_dir.append(1 - (1/ir_sensors.center))
             #if ir_sensors.back > 2:
             #    x_dir.append(1/ir_sensors.back)
@@ -513,7 +513,7 @@ class MyRob(CRobLinkAngs):
                 x_dir.append(1/ir_sensors.left)
             if ir_sensors.right > 2:
                 x_dir.append(1 - (1/ir_sensors.right))
-            if ir_sensors.center > 1:
+            if ir_sensors.center > 2:
                 y_dir.append(1 - (1/ir_sensors.center))
             #if ir_sensors.back > 2:
             #    y_dir.append(1/ir_sensors.back)
@@ -534,7 +534,7 @@ class MyRob(CRobLinkAngs):
             if len(y_dir) == 0:
                 y_dir = [0.5]
             if len(x_dir) > 0:
-                corrections = [-2.5 + sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
+                corrections = [2.5 + sum(x_dir)/len(x_dir), 0.5 - sum(y_dir)/len(y_dir)]
             else:
                 corrections = [xt, 0.5 - sum(y_dir)/len(y_dir)]
             
@@ -549,7 +549,7 @@ class MyRob(CRobLinkAngs):
             if len(x_dir) == 0:
                 x_dir = [0.5]
             if len(y_dir) > 0:
-                corrections = [0.5 - sum(x_dir)/len(x_dir), -2.5 + sum(y_dir)/len(y_dir)]
+                corrections = [0.5 - sum(x_dir)/len(x_dir), 2.5 + sum(y_dir)/len(y_dir)]
             else:
                 corrections = [0.5 - sum(x_dir)/len(x_dir), yt]
 
