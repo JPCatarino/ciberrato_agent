@@ -482,7 +482,7 @@ class MyRob(CRobLinkAngs):
                
         elif self.robot_state == RobotStates.FINISHED:
             # Print map, path and distance to file, exit
-            print("Printed map to {filename}.map")
+            print(f"Printed map to {filename}.map")
             print(f"Printed path to {filename}.path")
 
             for beacon, location in self.beacon_location.items():
