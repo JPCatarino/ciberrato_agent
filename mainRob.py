@@ -607,33 +607,32 @@ class MyRob(CRobLinkAngs):
             prev_out_r = temp_r
 
             deg = new_angle(out_l, out_r, prev_deg)
-            print("calculated deg", deg)
-            print("measured deg", radians(self.measures.compass))
 
             curr_xt = xt(out_l, out_r, deg, prev_xt)
             curr_yt = yt(out_l, out_r, deg, prev_yt)
             #print("before", curr_yt)
             curr_xt, curr_yt = self.calculate_deviation_ir(ir_sensors, curr_xt, curr_yt, curr_orientation)
             #print("after", curr_yt)
-            if curr_orientation == Orientation.S:
-                print("curr_xt", curr_xt)
 
             if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
                 distance_covered = curr_xt
-                if curr_orientation == Orientation.S:
-                    print("dist_cov", distance_covered)
             else:
                 distance_covered = curr_yt
                 
             ir_sensors, _, _ = self.readAndOrganizeSensors()
-            print(ir_sensors)
         
-        if curr_orientation == Orientation.N or curr_orientation == Orientation.S:
+        if curr_orientation == Orientation.N:
+            print("N - dist:", distance_covered)
             self.r_location.x += distance_covered
-            self.r_location.x = self.r_location.x
-        else:
+        elif curr_orientation == Orientation.W:
+            print("W - dist:", distance_covered)
             self.r_location.y += distance_covered
-            self.r_location.y = self.r_location.y
+        elif curr_orientation == Orientation.S:
+            print("S - dist:", distance_covered)
+            self.r_location.x += distance_covered
+        else:
+            print("E - dist:", distance_covered)
+            self.r_location.y -= distance_covered
         self.driveMotors(0, 0)
         print("loc", self.r_location.x, self.r_location.y)
         print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
