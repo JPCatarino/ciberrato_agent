@@ -422,6 +422,74 @@ class MyRob(CRobLinkAngs):
             self.clean_cells_to_visit()
             if self.measures.time == self.totalTime-1:
                 self.robot_state = RobotStates.FINISHED
+        elif self.robot_state == RobotStates.OPTIMIZING:
+            # Check what subpath needs optimization
+            optimal_subpath = [False]*len(self.shortest_path)
+            subpath_to_optimize = None
+            print("STATUS", ground.status.value)
+            for i, subpath in enumerate(self.shortest_path):
+                cost_known = 0
+                cost_unk = 0
+                start = reverse_point(self.beacon_location[subpath[0]])
+                dest = reverse_point(self.beacon_location[subpath[1]])
+                path_known = astar(self.map, start, dest, False)
+                path_unk = astar(self.map, start, dest, True)
+                cost_known += len(path_known)
+                cost_unk += len(path_unk)
+                if cost_known == cost_unk:
+                    print(f"Subpath {subpath} optimized!")
+                    optimal_subpath[i] = True
+                elif subpath[0] == ground.status.value:
+                    subpath_to_optimize = (i, subpath)
+            
+            if all(optimal_subpath) or self.measures.time >= self.totalTime - 1:
+                print("All subpaths are optimal!")
+                self.robot_state = RobotStates.PLANNING
+                return 0
+            
+            if not subpath_to_optimize:
+                to_optimize = [i for i, x in enumerate(optimal_subpath) if not x]
+                if to_optimize:
+                    index = to_optimize.pop()
+                    subpath_to_optimize = (index, self.shortest_path[index])
+            
+            if ground.status.value != subpath_to_optimize[1][0]:
+                self.nodes_to_visit.append(self.mapcell2robotcell(self.beacon_location[subpath_to_optimize[1][0]]))
+                self.c4_move_a()
+            else:
+                while not optimal_subpath[subpath_to_optimize[0]]:
+                    print("START OPTIMIZING")
+                    ir_sensors, _, robot_location = self.readAndOrganizeSensors()
+                    if self.c3_move(ir_sensors, robot_location, self.beacon_location[subpath_to_optimize[1][1]]):
+                        print("PATH OPTIMIZED")
+                        optimal_subpath[subpath_to_optimize[0]] = True
+                    
+
+        elif self.robot_state == RobotStates.PLANNING:
+            self.calculate_path_costs()
+            sorted_costs = [k for k, v in sorted(self.path_cost.items(), key=lambda item: item[1])]
+            shortest_path_index = sorted_costs.pop(0)
+            self.shortest_path_index = shortest_path_index
+            self.shortest_path = self.possible_paths[shortest_path_index]
+
+            if self.check_if_need_optimization(shortest_path_index):
+                print("Shortest path can't be pinpointed!")
+                print("Need to explore!")
+                self.robot_state = RobotStates.OPTIMIZING
+            else:
+                print("Shortest path found!")
+                self.robot_state = RobotStates.FINISHED
+               
+        elif self.robot_state == RobotStates.FINISHED:
+            # Print map, path and distance to file, exit
+            print("Printed map and plans to planning.out")
+            print(f"Printed path to {filename}")
+
+            for beacon, location in self.beacon_location.items():
+                self.map[location.y][location.x] = str(beacon)
+            self.print_path_to_file(filename)
+            self.finish()
+            exit()
 
     def c4_move_a(self):
         if not self.move_list:
@@ -629,10 +697,16 @@ class MyRob(CRobLinkAngs):
             self.r_location.y += distance_covered
         elif curr_orientation == Orientation.S:
             print("S - dist:", distance_covered)
-            self.r_location.x += distance_covered
+            if distance_covered > 0:
+                self.r_location.x += (1.02 - distance_covered)
+            else:
+                self.r_location.x += distance_covered
         else:
             print("E - dist:", distance_covered)
-            self.r_location.y -= distance_covered
+            if distance_covered > 0:
+                self.r_location.y += (1.02 - distance_covered)
+            else:
+                self.r_location.y += distance_covered
         self.driveMotors(0, 0)
         print("loc", self.r_location.x, self.r_location.y)
         print("loc_real", self.gps2robotcell(Point(self.measures.x, self.measures.y)))
