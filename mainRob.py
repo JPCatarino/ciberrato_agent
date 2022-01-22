@@ -89,7 +89,7 @@ class MyRob(CRobLinkAngs):
         if challenge != 4:
             curr_cell = self.gps2mapcell(robot_location)
         else:
-            curr_cell = self.robotcell2mapcell(self.curr_cell)
+            curr_cell = self.robotcell2mapcell(robot_location)
         if curr_cell not in self.beacon_location.values():
             self.beacon_location[ground.status.value] = curr_cell
 
@@ -403,7 +403,7 @@ class MyRob(CRobLinkAngs):
 
             # Save beacon location
             if ground.status.value > 0:
-                self.add_beacon_location(Point(0, 0), ground)
+                self.add_beacon_location(self.curr_cell, ground)
             
             ## IF COMPLETELY MAPPED STOP, IF ALL BEACONS FOUND GO PLAN, OTHERWISE MOVE
             if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
@@ -471,6 +471,17 @@ class MyRob(CRobLinkAngs):
             shortest_path_index = sorted_costs.pop(0)
             self.shortest_path_index = shortest_path_index
             self.shortest_path = self.possible_paths[shortest_path_index]
+
+            # This is necessary to empty rcv buffers.
+            # The simulator keeps sending sensor values even when
+            # they are not being read. What happens is that the socket
+            # gets clogged with old sensor readings that will be later 
+            # be consumed and will lead to errors that are not of the 
+            # responsability of the agent. This problem needs to be addressed
+            # on croblink.py by the teachers. The following line can mitigate the problem.
+            for i in range(50):
+                self.readSensors()
+
 
             if self.check_if_need_optimization(shortest_path_index):
                 print("Shortest path can't be pinpointed!")
@@ -900,7 +911,7 @@ class MyRob(CRobLinkAngs):
             return Orientation.E 
     
     def check_if_next_is_possible(self, curr_direction, next_direction,ir_sensors):
-        threshold = 1.8
+        threshold = 1.4
         
         if curr_direction == Orientation.N:
             if next_direction == Orientation.N:
