@@ -407,10 +407,11 @@ class MyRob(CRobLinkAngs):
             
             ## IF COMPLETELY MAPPED STOP, IF ALL BEACONS FOUND GO PLAN, OTHERWISE MOVE
             if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
-                self.robot_state = RobotStates.FINISHED
-            elif len(self.beacon_location) == self.nBeacons:
                 self.move_list = []
                 self.nodes_to_visit = []
+                if self.measures.time < self.totalTime - 1:
+                    ir_sensors, _, _ = self.readAndOrganizeSensors()
+                    self.c4_move_b(ir_sensors, self.robotcell2mapcell(Point(0,0)))
                 self.robot_state = RobotStates.PLANNING
             else:
                 self.robot_state =  RobotStates.MOVING
