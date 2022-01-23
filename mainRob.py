@@ -691,10 +691,8 @@ class MyRob(CRobLinkAngs):
         deg = radians(self.measures.compass)
         curr_orientation = Orientation[degree_to_cardinal(self.measures.compass)]
         start_time = 0
-        linear_pid = PID(0.30, 0, 0.02, setpoint=2)
-        linear_pid.output_limits = (-0.14, 0.14)
-        orientation_pid = PID(0.01, 0, 0.05, setpoint=0)
-        orientation_pid.output_limits = (-0.007, 0.007)
+        linear_pid = PID(0.30, 0, 0.02, setpoint=2, output_limits=(-0.14, 0.14))
+        orientation_pid = PID(0.01, 0, 0.05, setpoint=0, output_limits=(-0.007, 0.007))
 
         while 2 - abs(distance_covered) > 0.02:
             #prev_out_l = out_l
@@ -771,8 +769,7 @@ class MyRob(CRobLinkAngs):
         pass
 
     def rotate_c4(self, angle):
-        rot_pid = PID(0.002, 0, 0.00005, setpoint=angle)
-        rot_pid.output_limits = (-0.15, 0.15)
+        rot_pid = PID(0.0035, 0, 0.000073, setpoint=angle, output_limits=(-0.15, 0.15))
 
         curr_deg = self.measures.compass
 
