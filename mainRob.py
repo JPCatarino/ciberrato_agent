@@ -472,17 +472,6 @@ class MyRob(CRobLinkAngs):
             self.shortest_path_index = shortest_path_index
             self.shortest_path = self.possible_paths[shortest_path_index]
 
-            # This is necessary to empty rcv buffers.
-            # The simulator keeps sending sensor values even when
-            # they are not being read. What happens is that the socket
-            # gets clogged with old sensor readings that will be later 
-            # be consumed and will lead to errors that are not of the 
-            # responsability of the agent. This problem needs to be addressed
-            # on croblink.py by the teachers. The following line can mitigate the problem.
-            for i in range(50):
-                self.readSensors()
-
-
             if self.check_if_need_optimization(shortest_path_index):
                 print("Shortest path can't be pinpointed!")
                 print("Need to explore!")
