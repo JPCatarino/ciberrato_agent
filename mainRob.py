@@ -590,19 +590,6 @@ class MyRob(CRobLinkAngs):
 
         return True
 
-
-    def calculate_deviation_odometry(self, ir_sensors):
-        current_cardinal = degree_to_cardinal(self.measures.compass)
-        expected_orientation = Orientation[current_cardinal]
-        if self.measures.compass >= 0:
-            orientation_deviation = radians(expected_orientation.value - self.measures.compass)
-        elif expected_orientation == Orientation.S:
-            orientation_deviation =  radians(abs(self.measures.compass) - expected_orientation.value)
-        else: 
-            orientation_deviation = radians(expected_orientation.value - self.measures.compass)
-        
-        return orientation_deviation
-
     def calculate_deviation_ir(self, ir_sensors, xt, yt, curr_orientation):
         x_dir = []
         y_dir = []
@@ -786,18 +773,6 @@ class MyRob(CRobLinkAngs):
             self.driveMotors(l, r)
 
             self.readSensors()
-
-    def move_test(self, ir_sensors):
-        prevTime = self.measures.time
-        while self.measures.time - prevTime < 20:
-            err = self.calculate_deviation_odometry(ir_sensors)
-            self.driveMotors(0.1 - err , 0.1 + err)
-            ir_sensors, _, _ = self.readAndOrganizeSensors()
-
-            if ir_sensors.center > 2:
-                self.driveMotors(0.0, 0.0)
-            
-        self.driveMotors(0.0, 0.0)
 
     def calculate_path_costs(self):
         for i, p_path in enumerate(self.possible_paths):
