@@ -764,19 +764,19 @@ class MyRob(CRobLinkAngs):
         pass
 
     def rotate_c4(self, angle):
-        rot_pid = PID(0.0035, 0, 0.000073, setpoint=angle, output_limits=(-0.15, 0.15))
+        orientation_pid = PID(0.0035, 0, 0.000073, setpoint=angle, output_limits=(-0.15, 0.15))
 
         curr_deg = self.measures.compass
 
-        while abs(curr_deg - rot_pid.setpoint) > 2:
+        while abs(curr_deg - orientation_pid.setpoint) > 2:
             if angle == 180:
                 curr_deg = abs(self.measures.compass)
             else:
                 curr_deg = self.measures.compass
-            rot = rot_pid(curr_deg)
+            rot_pid = orientation_pid(curr_deg)
 
-            l = -rot
-            r = rot
+            l = -rot_pid
+            r = rot_pid
 
             self.driveMotors(l, r)
 
