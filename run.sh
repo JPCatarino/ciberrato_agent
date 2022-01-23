@@ -1,10 +1,10 @@
 #!/bin/bash
 
-challenge="1"
+challenge="4"
 host="localhost"
 robname="theAgent"
 pos="0"
-outfile="mapping.out"
+outfile="solution"
 
 while getopts "c:h:r:p:f:" op
 do
@@ -32,6 +32,7 @@ done
 
 shift $(($OPTIND-1))
 
+source venv/bin/activate
 case $challenge in
     1)
         # how to call agent for challenge 1
@@ -43,6 +44,10 @@ case $challenge in
         ;;
     3)
         # how to call agent for challenge 3
+        python3 mainRob.py -h "$host" -p "$pos" -r "$robname" -c "$challenge" -f "$outfile" # assuming -f is the option for the path
+        ;;
+    4)  
+        # how to call agent for challenge 4
         python3 mainRob.py -h "$host" -p "$pos" -r "$robname" -c "$challenge" -f "$outfile" # assuming -f is the option for the path
         ;;
 esac
