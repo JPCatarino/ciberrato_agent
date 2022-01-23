@@ -409,7 +409,7 @@ class MyRob(CRobLinkAngs):
             if not self.nodes_to_visit  or self.measures.time == self.totalTime-1:
                 self.move_list = []
                 self.nodes_to_visit = []
-                if self.measures.time < self.totalTime - 1:
+                if self.measures.time < self.totalTime - 25:
                     ir_sensors, _, _ = self.readAndOrganizeSensors()
                     self.c4_move_b(ir_sensors, self.robotcell2mapcell(Point(0,0)))
                 self.robot_state = RobotStates.PLANNING
@@ -421,8 +421,13 @@ class MyRob(CRobLinkAngs):
             if self.c4_move_a():
                 self.robot_state = RobotStates.MAPPING
             self.clean_cells_to_visit()
-            if self.measures.time == self.totalTime-1:
-                self.robot_state = RobotStates.FINISHED
+            if self.totalTime - self.measures.time < 25:
+                self.move_list = []
+                self.nodes_to_visit = []
+                if self.measures.time < self.totalTime - 25:
+                    ir_sensors, _, _ = self.readAndOrganizeSensors()
+                    self.c4_move_b(ir_sensors, self.robotcell2mapcell(Point(0,0)))
+                self.robot_state = RobotStates.PLANNING
         elif self.robot_state == RobotStates.OPTIMIZING:
             # Check what subpath needs optimization
             optimal_subpath = [False]*len(self.shortest_path)
@@ -524,6 +529,8 @@ class MyRob(CRobLinkAngs):
             
             self.rotate_c4(orientation.value)
             ir_sensors, _, _ = self.readAndOrganizeSensors()
+            if self.totalTime - self.measures.time < 25:
+                return False
             dest_cell = Point(round_up_to_even(dest_cell.x), round_up_to_even(dest_cell.y))
             self.move_forward_odometry(ir_sensors)
             self.add_to_visited_cells(dest_cell)
